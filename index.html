@@ -13,16 +13,13 @@
 <body class="h-full antialiased font-sans selection:bg-cyan-500 selection:text-black">
 
 <div id="app" class="flex flex-col h-screen" v-cloak>
-    <!-- Header -->
     <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur px-6 py-4 flex items-center justify-between shrink-0">
         <div class="flex items-center gap-8 flex-1">
-            <!-- Title -->
             <div class="flex items-center gap-3 shrink-0">
                 <div class="w-2.5 h-2.5 rounded-full" :class="dbLoaded ? 'bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'bg-amber-500 animate-pulse'"></div>
-                <h1 class="text-sm font-bold tracking-widest text-slate-200 uppercase">WT Squadron Hub v4.0</h1>
+                <h1 class="text-sm font-bold tracking-widest text-slate-200 uppercase">WT Squadron Hub v4.1</h1>
             </div>
             
-            <!-- Поиск оперативников -->
             <div id="search-component-container" class="relative w-72">
                 <input 
                     type="text" 
@@ -32,7 +29,6 @@
                     :placeholder="cloudPlayers.length ? `Поиск оперативника (всего: ${cloudPlayers.length})...` : 'Загрузка базы оперативников...'" 
                     class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-600 outline-none transition"
                 >
-                <!-- Выпадающий список -->
                 <div v-if="showSuggestions" class="absolute left-0 right-0 mt-1 bg-slate-900 border border-slate-800 rounded-lg shadow-2xl max-h-48 overflow-y-auto z-50 divide-y divide-slate-950">
                     <button 
                         v-for="name in filteredCloudPlayers" 
@@ -57,7 +53,6 @@
             </div>
         </div>
         
-        <!-- Right side DB Info -->
         <div class="flex items-center gap-4 shrink-0">
             <label v-if="!dbLoaded" class="flex flex-col justify-center px-3 py-1.5 border border-dashed border-amber-600/50 hover:border-amber-500 rounded-xl cursor-pointer text-xs bg-slate-950/80 transition min-w-[160px]">
                 <span class="text-amber-400 font-medium text-center animate-pulse">⚠️ Выбрать global_db.json</span>
@@ -69,22 +64,31 @@
         </div>
     </header>
 
-    <!-- Main Content Grid -->
     <div class="flex flex-1 overflow-hidden">
-        <!-- Sidebar -->
         <aside class="w-85 border-r border-slate-800 bg-slate-900/20 p-6 flex flex-col gap-5 overflow-y-auto shrink-0">
             
-            <!-- РЕЖИМЫ КАНАЛОВ БОЕВ -->
-            <div class="flex bg-slate-950 p-1 border border-slate-800 rounded-xl">
-                <button @click="filters.mode = 'squadron'" :class="filters.mode === 'squadron' ? 'bg-cyan-500 text-black font-bold shadow-lg' : 'text-slate-400 hover:text-slate-200'" class="flex-1 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center justify-center gap-1">
-                    💀 1 Жизнь <span class="text-[10px] opacity-70">(СРБ)</span>
-                </button>
-                <button @click="filters.mode = 'multi'" :class="filters.mode === 'multi' ? 'bg-slate-800 text-cyan-400 font-bold border-cyan-500/10' : 'text-slate-400 hover:text-slate-200'" class="flex-1 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center justify-center gap-1">
-                    🔄 Мульти <span class="text-[10px] opacity-70">(Рандом)</span>
+            <div class="flex flex-col gap-1 bg-slate-950 p-1 border border-slate-800 rounded-xl">
+                <div class="flex gap-1 w-full">
+                    <button @click="changeGlobalMode('squadron')" :class="filters.mode === 'squadron' ? 'bg-cyan-500 text-black font-bold shadow-lg' : 'text-slate-400 hover:text-slate-200'" class="flex-1 py-1.5 rounded-lg text-[11px] transition cursor-pointer flex items-center justify-center gap-1">
+                        💀 СРБ
+                    </button>
+                    <button @click="changeGlobalMode('multi')" :class="filters.mode === 'multi' ? 'bg-slate-800 text-cyan-400 font-bold border-cyan-500/10' : 'text-slate-400 hover:text-slate-200'" class="flex-1 py-1.5 rounded-lg text-[11px] transition cursor-pointer flex items-center justify-center gap-1">
+                        🔄 Мульти
+                    </button>
+                </div>
+                <button @click="changeGlobalMode('tournament')" :class="filters.mode === 'tournament' ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black font-black shadow-lg' : 'text-amber-500/80 hover:text-amber-400 bg-amber-500/5'" class="w-full py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center justify-center gap-1 border border-amber-500/10">
+                    🏆 Режим «Турниры TSS»
                 </button>
             </div>
 
-            <!-- КАРТОЧКА: [ПОЛК] НИКНЕЙМ -->
+            <label class="flex items-center justify-between p-2.5 bg-slate-900/40 border border-slate-900 rounded-xl cursor-pointer hover:bg-slate-900/70 transition">
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Скрытая техника</span>
+                <div class="relative">
+                    <input type="checkbox" v-model="filters.showHidden" class="sr-only peer">
+                    <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-slate-400 peer-checked:after:bg-cyan-400 after:border-none after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-950 border border-slate-700"></div>
+                </div>
+            </label>
+
             <div v-if="playerBasics" class="bg-slate-900/30 border border-slate-900 rounded-xl p-4 border-l-2 border-l-cyan-500 animate-fade-in flex flex-col gap-2">
                 <div>
                     <div class="text-[9px] font-bold uppercase text-slate-500 tracking-wider mb-1">Выбранный оперативник</div>
@@ -104,16 +108,43 @@
                 </div>
             </div>
 
+            <div v-if="filters.mode === 'tournament'" class="bg-amber-500/5 border border-amber-500/10 rounded-xl p-4 flex flex-col gap-4 animate-fade-in">
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-amber-500 mb-2">Категория турнира</label>
+                    <div class="grid grid-cols-2 gap-1 bg-slate-950 p-1 border border-slate-900 rounded-lg">
+                        <button @click="filters.tourType = 'tank'" :class="filters.tourType === 'tank' ? 'bg-amber-500 text-black font-bold' : 'text-slate-400'" class="py-1 rounded text-[10px] font-medium transition cursor-pointer">🪖 Танки</button>
+                        <button @click="filters.tourType = 'air'" :class="filters.tourType === 'air' ? 'bg-amber-500 text-black font-bold' : 'text-slate-400'" class="py-1 rounded text-[10px] font-medium transition cursor-pointer">✈️ Авиа</button>
+                        <button @click="filters.tourType = 'mixed'" :class="filters.tourType === 'mixed' ? 'bg-amber-500 text-black font-bold' : 'text-slate-400'" class="py-1 rounded text-[10px] font-medium transition cursor-pointer">⚔️ Смеш.</button>
+                        <button @click="filters.tourType = 'naval'" :class="filters.tourType === 'naval' ? 'bg-amber-500 text-black font-bold' : 'text-slate-400'" class="py-1 rounded text-[10px] font-medium transition cursor-pointer">⚓ Морские</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-amber-500 mb-1.5">Номера сетапов TSS (всего: {{ availableTourPresets.length }})</label>
+                    <select v-model="filters.tourPresetId" class="w-full bg-slate-950 border border-slate-900 focus:border-amber-500 rounded-lg px-2 py-2 text-xs text-slate-200 font-mono font-medium outline-none cursor-pointer">
+                        <option value="" disabled>-- Выберите сетап --</option>
+                        <option v-for="preset in availableTourPresets" :key="preset.id" :value="preset.id">
+                            {{ preset.name }}
+                        </option>
+                    </select>
+                </div>
+
+                <div v-if="activePresetData" class="bg-slate-950/60 border border-slate-900 p-2.5 rounded-lg flex items-center justify-between text-[11px]">
+                    <span class="text-slate-500 font-medium">Формат боя:</span>
+                    <span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded font-bold font-mono">
+                        {{ activePresetData.teamFormat }}x{{ activePresetData.teamFormat }}
+                    </span>
+                </div>
+            </div>
+
             <hr class="border-slate-900">
 
-            <!-- Search by vehicle name -->
-            <div>
+            <div v-if="filters.mode !== 'tournament'">
                 <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Поиск по названию техники</label>
                 <input type="text" v-model="filters.search" placeholder="Например: Т-34, Leo, Spitfire..." class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-700 outline-none transition">
             </div>
 
-            <!-- 🔢 ГРАНИЦЫ БР НЕДЕЛЬ (РАЗДЕЛЕННЫЕ ЯЧЕЙКИ СО СЧЕТЧИКАМИ) -->
-            <div>
+            <div v-if="filters.mode !== 'tournament'">
                 <div class="flex justify-between items-center mb-2">
                     <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Границы БР недель</label>
                     <button @click="resetBrs" class="text-[10px] text-cyan-500 hover:underline cursor-pointer">Сбросить</button>
@@ -122,11 +153,9 @@
                     <button v-for="br in brBrackets" :key="br" @click="toggleBr(br)" 
                         :class="filters.brs.includes(br) ? 'bg-cyan-500 text-black border-cyan-400 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'" 
                         class="border rounded text-xs transition cursor-pointer font-mono flex overflow-hidden h-7 items-stretch">
-                        <!-- Левая часть: Значение БР -->
                         <span class="flex-1 flex items-center justify-center border-r text-[11px]" :class="filters.brs.includes(br) ? 'border-cyan-600' : 'border-slate-900'">
                             {{ br.toFixed(1) }}
                         </span>
-                        <!-- Правая часть: Счетчик машин игрока -->
                         <span class="w-7 flex items-center justify-center text-[10px] font-bold" :class="filters.brs.includes(br) ? 'bg-cyan-600/30 text-black' : 'bg-slate-900/40 text-slate-500'">
                             {{ brCounters[br] || 0 }}
                         </span>
@@ -134,8 +163,7 @@
                 </div>
             </div>
 
-            <!-- 🛠️ КЛАСС ТЕХНИКИ (С КАНАЛЬНЫМИ СЧЕТЧИКАМИ) -->
-            <div>
+            <div v-if="filters.mode !== 'tournament'">
                 <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Класс техники</label>
                 <div class="flex bg-slate-950 p-1 border border-slate-800 rounded-lg">
                     <button @click="filters.type = 'all'" :class="filters.type === 'all' ? 'bg-slate-900 text-cyan-400 font-bold' : 'text-slate-500'" class="flex-1 py-1 rounded text-[11px] transition cursor-pointer text-center">
@@ -150,7 +178,6 @@
                 </div>
             </div>
 
-            <!-- 🌍 НАЦИИ (С МАТРИЧНЫМИ СЧЕТЧИКАМИ СТАТУСА ЕСТЬ \ ТОП) -->
             <div>
                 <div class="flex justify-between items-center mb-2">
                     <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Нации</label>
@@ -162,23 +189,20 @@
                             <input type="checkbox" v-model="filters.nations" :value="key" class="rounded border-slate-800 text-cyan-500 focus:ring-0 bg-slate-900">
                             <span class="text-slate-400">{{ label }}</span>
                         </div>
-                        <!-- Блок Есть \ Топ -->
                         <span class="text-[10px] font-mono text-slate-600 shrink-0">
-                            <span class="text-amber-500/80 font-bold" title="В наличии под текущие фильтры">{{ nationCounters[key]?.owned || 0 }}</span><!--
-                         --><span class="opacity-40 font-sans mx-0.5">\</span><!--
-                         --><span class="text-emerald-400 font-bold" title="В пиках (топ) под текущие фильтры">{{ nationCounters[key]?.spaded || 0 }}</span>
+                            <span class="text-amber-500/80 font-bold">{{ nationCounters[key]?.owned || 0 }}</span>
+                            <span class="opacity-40 font-sans mx-0.5">\</span>
+                            <span class="text-emerald-400 font-bold">{{ nationCounters[key]?.spaded || 0 }}</span>
                         </span>
                     </label>
                 </div>
             </div>
         </aside>
 
-        <!-- Main Display Content Area -->
         <main class="flex-1 bg-slate-950 p-6 flex flex-col min-w-0 overflow-hidden">
-            <!-- Dashboard Statistics -->
             <div v-if="dbLoaded" class="grid grid-cols-4 gap-4 mb-5 shrink-0">
                 <div class="bg-slate-900/30 border border-slate-900 rounded-xl p-4 flex flex-col justify-between">
-                    <div class="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Доступно по фильтрам</div>
+                    <div class="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Доступно по критериям</div>
                     <div class="text-xl font-black text-slate-300 mt-0.5 font-mono">
                         {{ dashboardStats.totalOwned }} <span class="text-xs text-slate-600 font-medium font-sans">из</span> {{ dashboardStats.dbTotal }}
                     </div>
@@ -197,7 +221,6 @@
                 </div>
             </div>
 
-            <!-- Table -->
             <div v-if="!playerLoaded" class="flex-1 flex flex-col items-center justify-center border border-dashed border-slate-800 rounded-xl bg-slate-900/5 p-12 text-center">
                 <div class="w-10 h-10 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-center text-cyan-500 text-sm font-bold mb-4">i</div>
                 <h3 class="text-slate-300 font-medium text-xs mb-1">Ожидание выбора профиля</h3>
@@ -206,7 +229,7 @@
 
             <div v-else class="flex-1 flex flex-col min-h-0">
                 <div v-if="isFallbackActive" class="mb-3 px-4 py-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[11px] text-amber-400 flex items-center justify-between">
-                    <span>⚠️ <strong>Режим планирования:</strong> У этого бойца нет открытой техники под выбранные критерии. Выведены закрытые машины из глобальной базы.</span>
+                    <span>⚠️ <strong>Режим планирования:</strong> У этого бойца нет открытой техники под выбранные критерии. Выведены закрытые машины.</span>
                 </div>
 
                 <div class="flex-1 overflow-auto border border-slate-900 rounded-xl bg-slate-900/10">
@@ -222,9 +245,9 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-900/40 text-slate-300 font-mono">
-                            <tr v-for="item in currentTableData" :key="item.id" :class="item.status === 0 ? 'opacity-40 bg-slate-950/20' : 'hover:bg-slate-900/20'" class="transition">
+                            <tr v-for="item in currentTableData" :key="item.id" :class="item.status === 0 ? 'opacity-35 bg-slate-950/40' : 'hover:bg-slate-900/20'" class="transition">
                                 <td class="p-3 pl-4 font-sans font-medium text-slate-200">
-                                    <span v-if="item.isPrem" class="text-amber-400 mr-1" title="Премиум/Акционная">★</span>
+                                    <span v-if="item.isPrem" class="text-amber-400 mr-1">★</span>
                                     {{ item.name }}
                                     <span class="block text-[10px] text-slate-600 font-mono mt-0.5">{{ item.id }}</span>
                                 </td>
@@ -246,8 +269,8 @@
                                         <span v-if="filters.mode === 'squadron'" title="Внимание! Не пиковая техника опасна для СРБ">⚠️ Не топ</span>
                                         <span v-else>✓ Открыта</span>
                                     </span>
-                                    <span v-else class="bg-slate-800/40 border border-slate-800 text-slate-500 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide">
-                                        🔒 Закрыта
+                                    <span v-else class="bg-rose-950/40 border border-rose-900/50 text-rose-400 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide">
+                                        🔒 Нет в наличии
                                     </span>
                                 </td>
                             </tr>
@@ -262,11 +285,6 @@
 <script>
     const { createApp, ref, computed, reactive, onMounted, watch } = Vue;
 
-    const GH_CONFIG = {
-        owner: "твой_логин_github",
-        repo: "название_репозитория"
-    };
-
     createApp({
         setup() {
             const globalDb = ref({});
@@ -278,6 +296,7 @@
             const isFallbackActive = ref(false);
 
             const cloudPlayers = ref([]);
+            const tournamentPresets = ref([]); // Загружается динамически из tournament_presets.json
             const playerSearchQuery = ref('');
             const showSuggestions = ref(false);
             const isExtensionInstalled = ref(false);
@@ -295,10 +314,34 @@
                 brs: [],
                 type: 'all',
                 nations: [],
-                mode: 'squadron'
+                mode: 'squadron',
+                showHidden: false,      
+                tourType: 'tank',       
+                tourPresetId: ''        
             });
 
-            // 1. ДИНАМИЧЕСКИЕ СЧЕТЧИКИ ДЛЯ КНОПОК БР (Влияет класс техники и нации)
+            const availableTourPresets = computed(() => {
+                return tournamentPresets.value.filter(p => p.type === filters.tourType);
+            });
+
+            const activePresetData = computed(() => {
+                return tournamentPresets.value.find(p => p.id === filters.tourPresetId);
+            });
+
+            const changeGlobalMode = (mode) => {
+                filters.mode = mode;
+                if (mode === 'tournament') {
+                    const firstAvailable = tournamentPresets.value.find(p => p.type === filters.tourType);
+                    filters.tourPresetId = firstAvailable ? firstAvailable.id : '';
+                }
+            };
+
+            watch(() => filters.tourType, (newType) => {
+                const firstAvailable = tournamentPresets.value.find(p => p.type === newType);
+                filters.tourPresetId = firstAvailable ? firstAvailable.id : '';
+            });
+
+            // Счетчики БР
             const brCounters = computed(() => {
                 const counts = {};
                 brBrackets.forEach(b => counts[b] = 0);
@@ -306,7 +349,7 @@
 
                 for (const [vId, meta] of Object.entries(globalDb.value)) {
                     let status = playerStats.value[meta.country]?.[vId] || 0;
-                    if (status === 0) continue; // Считаем только то, что открыто/куплено
+                    if (status === 0) continue;
 
                     let realBr = meta.battleRatingHistorical || 1.0;
                     if (meta.unitMoveType === 'air') {
@@ -315,8 +358,6 @@
                     const bracket = matchBracket(realBr);
                     const isAir = meta.unitMoveType === 'air';
 
-                    // Фильтруем по ВСЕМ критериям, КРОМЕ самого БР
-                    if (filters.search && !meta.name.toLowerCase().includes(filters.search.toLowerCase()) && !vId.toLowerCase().includes(filters.search.toLowerCase())) continue;
                     if (filters.type === 'tank' && isAir) continue;
                     if (filters.type === 'air' && !isAir) continue;
                     if (filters.nations.length && !filters.nations.includes(meta.country)) continue;
@@ -326,7 +367,7 @@
                 return counts;
             });
 
-            // 2. ДИНАМИЧЕСКИЕ СЧЕТЧИКИ ДЛЯ КЛАССОВ ТЕХНИКИ (Влияет БР и нации)
+            // Счетчики типов
             const typeCounters = computed(() => {
                 const counts = { all: 0, tank: 0, air: 0 };
                 if (!playerLoaded.value || !dbLoaded.value) return counts;
@@ -342,7 +383,6 @@
                     const bracket = matchBracket(realBr);
                     const isAir = meta.unitMoveType === 'air';
 
-                    if (filters.search && !meta.name.toLowerCase().includes(filters.search.toLowerCase()) && !vId.toLowerCase().includes(filters.search.toLowerCase())) continue;
                     if (filters.brs.length && !filters.brs.includes(bracket)) continue;
                     if (filters.nations.length && !filters.nations.includes(meta.country)) continue;
 
@@ -353,7 +393,7 @@
                 return counts;
             });
 
-            // 3. ДИНАМИЧЕСКИЕ СЧЕТЧИКИ ДЛЯ НАЦИЙ ЕСТЬ \ ТОП (Влияет БР и Класс техники)
+            // Счетчики наций
             const nationCounters = computed(() => {
                 const counts = {};
                 Object.keys(nationsMap).forEach(k => counts[k] = { owned: 0, spaded: 0 });
@@ -361,6 +401,8 @@
 
                 for (const [vId, meta] of Object.entries(globalDb.value)) {
                     if (!nationsMap[meta.country]) continue;
+                    if (filters.mode === 'tournament' && activePresetData.value && !activePresetData.value.list.includes(vId)) continue;
+
                     let status = playerStats.value[meta.country]?.[vId] || 0;
                     if (status === 0) continue;
 
@@ -371,10 +413,11 @@
                     const bracket = matchBracket(realBr);
                     const isAir = meta.unitMoveType === 'air';
 
-                    if (filters.search && !meta.name.toLowerCase().includes(filters.search.toLowerCase()) && !vId.toLowerCase().includes(filters.search.toLowerCase())) continue;
-                    if (filters.brs.length && !filters.brs.includes(bracket)) continue;
-                    if (filters.type === 'tank' && isAir) continue;
-                    if (filters.type === 'air' && !isAir) continue;
+                    if (filters.mode !== 'tournament') {
+                        if (filters.brs.length && !filters.brs.includes(bracket)) continue;
+                        if (filters.type === 'tank' && isAir) continue;
+                        if (filters.type === 'air' && !isAir) continue;
+                    }
 
                     counts[meta.country].owned++;
                     if (status === 2) counts[meta.country].spaded++;
@@ -386,7 +429,6 @@
                 if (!newVal) return;
                 const targetLower = newVal.trim().toLowerCase();
                 const exactMatch = cloudPlayers.value.find(name => name.toLowerCase() === targetLower);
-                
                 if (exactMatch && activePlayerUid.value !== 'cloud_' + exactMatch) {
                     activePlayerUid.value = 'cloud_' + exactMatch;
                     showSuggestions.value = false;
@@ -409,14 +451,19 @@
                     }
                 });
 
+                // Загружаем реестр игроков
                 fetch('players_list.json?t=' + Date.now())
-                    .then(res => { if (!res.ok) throw new Error(); return res.json(); })
-                    .then(data => {
-                        cloudPlayers.value = Array.isArray(data) ? data : [];
-                        initHub();
-                    })
+                    .then(res => { if (res.ok) return res.json(); throw new Error(); })
+                    .then(data => { cloudPlayers.value = Array.isArray(data) ? data : []; initHub(); })
                     .catch(() => { initHub(); });
 
+                // 🏆 ЗАГРУЖАЕМ ДИНАМИЧЕСКИЙ РЕЕСТР ПРЕСЕТОВ ТУРНИРОВ ИЗ ОБЛАКА
+                fetch('tournament_presets.json?t=' + Date.now())
+                    .then(res => { if (res.ok) return res.json(); throw new Error(); })
+                    .then(data => { tournamentPresets.value = Array.isArray(data) ? data : []; })
+                    .catch(() => { console.log("Файл реестра турниров еще не сформирован."); });
+
+                // Загружаем глобальную базу техники
                 fetch('global_db.json')
                     .then(res => { if (!res.ok) throw new Error(); return res.json(); })
                     .then(data => { globalDb.value = data; dbLoaded.value = true; })
@@ -486,7 +533,6 @@
                                 SpadeInfo: data.SpadeInfo || data,
                                 Basics: data.Basics || { nickname: nickname, SquadronName: 'ПОЛК', uid: '' }
                             };
-                            
                             playerLoaded.value = true;
                             localStorage.setItem('wt_active_uid', uid);
                         })
@@ -508,14 +554,15 @@
                 if (meta.unitMoveType === 'air') {
                     realBr = (filters.mode === 'squadron') ? (meta.battleRatingTankHistorical || meta.battleRatingHistorical || 1.0) : meta.battleRatingHistorical;
                 }
-
                 const bracket = matchBracket(realBr);
                 const isAir = meta.unitMoveType === 'air';
 
-                if (filters.search && !meta.name.toLowerCase().includes(filters.search.toLowerCase()) && !vId.toLowerCase().includes(filters.search.toLowerCase())) return null;
-                if (filters.brs.length && !filters.brs.includes(bracket)) return null;
-                if (filters.type === 'tank' && isAir) return null;
-                if (filters.type === 'air' && !isAir) return null;
+                if (filters.mode !== 'tournament') {
+                    if (filters.search && !meta.name.toLowerCase().includes(filters.search.toLowerCase()) && !vId.toLowerCase().includes(filters.search.toLowerCase())) return null;
+                    if (filters.brs.length && !filters.brs.includes(bracket)) return null;
+                    if (filters.type === 'tank' && isAir) return null;
+                    if (filters.type === 'air' && !isAir) return null;
+                }
                 if (filters.nations.length && !filters.nations.includes(meta.country)) return null;
 
                 return {
@@ -534,29 +581,39 @@
                 let dbTotal = 0, playerOpen = 0, playerSpaded = 0;
                 if (!dbLoaded.value) return { dbTotal, playerOpen, playerSpaded, totalOwned: 0, readiness: 0 };
 
-                for (const [vId, meta] of Object.entries(globalDb.value)) {
-                    if (!nationsMap[meta.country]) continue;
+                if (filters.mode === 'tournament' && activePresetData.value) {
+                    activePresetData.value.list.forEach(vId => {
+                        const meta = globalDb.value[vId];
+                        if (!meta || !nationsMap[meta.country]) return;
+                        if (filters.nations.length && !filters.nations.includes(meta.country)) return;
 
-                    let realBr = meta.battleRatingHistorical || 1.0;
-                    if (meta.unitMoveType === 'air') {
-                        realBr = (filters.mode === 'squadron') ? (meta.battleRatingTankHistorical || meta.battleRatingHistorical || 1.0) : meta.battleRatingHistorical;
+                        dbTotal++;
+                        let status = playerLoaded.value && playerStats.value[meta.country]?.[vId] || 0;
+                        if (status === 1) playerOpen++;
+                        if (status === 2) playerSpaded++;
+                    });
+                } else {
+                    for (const [vId, meta] of Object.entries(globalDb.value)) {
+                        if (!nationsMap[meta.country]) continue;
+                        let realBr = meta.battleRatingHistorical || 1.0;
+                        if (meta.unitMoveType === 'air') {
+                            realBr = (filters.mode === 'squadron') ? (meta.battleRatingTankHistorical || meta.battleRatingHistorical || 1.0) : meta.battleRatingHistorical;
+                        }
+                        const bracket = matchBracket(realBr);
+                        const isAir = meta.unitMoveType === 'air';
+
+                        if (filters.search && !meta.name.toLowerCase().includes(filters.search.toLowerCase()) && !vId.toLowerCase().includes(filters.search.toLowerCase())) continue;
+                        if (filters.brs.length && !filters.brs.includes(bracket)) continue;
+                        if (filters.type === 'tank' && isAir) continue;
+                        if (filters.type === 'air' && !isAir) continue;
+                        if (filters.nations.length && !filters.nations.includes(meta.country)) continue;
+
+                        dbTotal++;
+                        let status = playerLoaded.value && playerStats.value[meta.country]?.[vId] || 0;
+                        if (status === 1) playerOpen++;
+                        if (status === 2) playerSpaded++;
                     }
-                    const bracket = matchBracket(realBr);
-                    const isAir = meta.unitMoveType === 'air';
-
-                    if (filters.search && !meta.name.toLowerCase().includes(filters.search.toLowerCase()) && !vId.toLowerCase().includes(filters.search.toLowerCase())) continue;
-                    if (filters.brs.length && !filters.brs.includes(bracket)) continue;
-                    if (filters.type === 'tank' && isAir) continue;
-                    if (filters.type === 'air' && !isAir) continue;
-                    if (filters.nations.length && !filters.nations.includes(meta.country)) continue;
-
-                    dbTotal++;
-
-                    let status = playerLoaded.value && playerStats.value[meta.country]?.[vId] || 0;
-                    if (status === 1) playerOpen++;
-                    if (status === 2) playerSpaded++;
                 }
-
                 const totalOwned = playerOpen + playerSpaded;
                 return { dbTotal, playerOpen, playerSpaded, totalOwned, readiness: totalOwned > 0 ? Math.round((playerSpaded / totalOwned) * 100) : 0 };
             });
@@ -564,30 +621,52 @@
             const currentTableData = computed(() => {
                 if (!dbLoaded.value || !playerLoaded.value) return [];
                 let list = [];
-                for (const [countryKey, vehicles] of Object.entries(playerStats.value)) {
-                    for (const [vId, status] of Object.entries(vehicles)) {
-                        if (status > 0 && globalDb.value[vId]) {
-                            const parsed = parseUnit(vId, globalDb.value[vId], status);
-                            if (parsed) list.push(parsed);
-                        }
-                    }
-                }
 
-                if (list.length === 0 && (filters.search || filters.brs.length || filters.type !== 'all' || filters.nations.length)) {
-                    isFallbackActive.value = true;
-                    for (const [vId, meta] of Object.entries(globalDb.value)) {
-                        if (!(playerStats.value[meta.country]?.[vId] > 0)) {
-                            const parsed = parseUnit(vId, meta, 0);
+                if (filters.mode === 'tournament' && activePresetData.value) {
+                    activePresetData.value.list.forEach(vId => {
+                        const meta = globalDb.value[vId];
+                        if (meta) {
+                            const status = playerStats.value[meta.country]?.[vId] || 0;
+                            if (status === 0 && !filters.showHidden) return;
+                            const parsed = parseUnit(vId, meta, status);
                             if (parsed) list.push(parsed);
                         }
+                    });
+                } else {
+                    for (const [countryKey, vehicles] of Object.entries(playerStats.value)) {
+                        for (const [vId, status] of Object.entries(vehicles)) {
+                            if (status > 0 && globalDb.value[vId]) {
+                                const parsed = parseUnit(vId, globalDb.value[vId], status);
+                                if (parsed) list.push(parsed);
+                            }
+                        }
                     }
-                } else { isFallbackActive.value = false; }
+                    if (filters.showHidden) {
+                        for (const [vId, meta] of Object.entries(globalDb.value)) {
+                            if (!nationsMap[meta.country]) continue;
+                            const status = playerStats.value[meta.country]?.[vId] || 0;
+                            if (status === 0) {
+                                const parsed = parseUnit(vId, meta, 0);
+                                if (parsed) list.push(parsed);
+                            }
+                        }
+                    }
+                    if (list.length === 0 && !filters.showHidden && (filters.search || filters.brs.length || filters.type !== 'all' || filters.nations.length)) {
+                        isFallbackActive.value = true;
+                        for (const [vId, meta] of Object.entries(globalDb.value)) {
+                            if (!(playerStats.value[meta.country]?.[vId] > 0)) {
+                                const parsed = parseUnit(vId, meta, 0);
+                                if (parsed) list.push(parsed);
+                            }
+                        }
+                    } else { isFallbackActive.value = false; }
+                }
                 return list.sort((a, b) => b.br - a.br);
             });
 
             return {
-                filters, dbLoaded, playerLoaded, brBrackets, nationsMap, currentTableData, dashboardStats, isFallbackActive, playerBasics, activePlayerUid, cloudPlayers, playerSearchQuery, showSuggestions, filteredCloudPlayers, isExtensionInstalled, brCounters, typeCounters, nationCounters,
-                loadGlobalDbManual, toggleBr, resetBrs, resetNations, switchPlayer, selectPlayer
+                filters, dbLoaded, playerLoaded, brBrackets, nationsMap, currentTableData, dashboardStats, isFallbackActive, playerBasics, activePlayerUid, cloudPlayers, playerSearchQuery, showSuggestions, filteredCloudPlayers, isExtensionInstalled, brCounters, typeCounters, nationCounters, availableTourPresets, activePresetData,
+                loadGlobalDbManual, toggleBr, resetBrs, resetNations, switchPlayer, selectPlayer, changeGlobalMode
             };
         }
     }).mount('#app');
