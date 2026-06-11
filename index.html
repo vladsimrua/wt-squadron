@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WT — Squadron Analytics Pro</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- Vue 3 CDN -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
         [v-cloak] { display: none !important; }
@@ -15,36 +13,33 @@
 <body class="h-full antialiased font-sans selection:bg-cyan-500 selection:text-black">
 
 <div id="app" class="flex flex-col h-screen" v-cloak>
-    <!-- Header -->
     <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur px-6 py-4 flex items-center justify-between shrink-0">
         <div class="flex items-center gap-8 flex-1">
-            <!-- Title -->
             <div class="flex items-center gap-3 shrink-0">
                 <div class="w-2.5 h-2.5 rounded-full" :class="dbLoaded ? 'bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'bg-amber-500 animate-pulse'"></div>
-                <h1 class="text-sm font-bold tracking-widest text-slate-200 uppercase">WT Squadron Hub v3.5</h1>
+                <h1 class="text-sm font-bold tracking-widest text-slate-200 uppercase">WT Squadron Hub v3.6</h1>
             </div>
             
-            <!-- УМНЫЙ АВТОКОМПЛИТ БОЙЦОВ ПО РЕАЛЬНОЙ ПАПКЕ ПРОФИЛЕЙ -->
             <div class="relative w-64">
                 <input 
                     type="text" 
                     v-model="playerSearchQuery" 
                     @focus="showSuggestions = true"
-                    @blur="hideSuggestionsWithDelay"
+                    @blur="showSuggestions = false"
+                    @input="showSuggestions = true"
                     placeholder="Поиск оперативника..." 
                     class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-700 outline-none transition"
                 >
-                <!-- Меню подсказок -->
                 <div v-if="showSuggestions" class="absolute left-0 right-0 mt-1 bg-slate-900 border border-slate-800 rounded-lg shadow-2xl max-h-48 overflow-y-auto z-50 divide-y divide-slate-950">
                     <button 
                         v-for="name in filteredCloudPlayers" 
                         :key="name" 
-                        @click="selectPlayer(name)"
+                        @mousedown.prevent="selectPlayer(name)"
                         class="w-full text-left px-3 py-2 text-xs hover:bg-slate-800 text-slate-300 hover:text-cyan-400 transition cursor-pointer font-medium"
                     >
                         👤 {{ name }}
                     </button>
-                    <!-- Умный блок добавления, если совпадений нет -->
+                    
                     <div v-if="filteredCloudPlayers.length === 0" class="p-3 text-center text-xs text-slate-500">
                         <div v-if="isExtensionInstalled" class="flex flex-col gap-1.5">
                             <span>Боец не найден в базе.</span>
@@ -60,24 +55,20 @@
             </div>
         </div>
         
-        <!-- Right side DB Info -->
         <div class="flex items-center gap-4 shrink-0">
             <label v-if="!dbLoaded" class="flex flex-col justify-center px-3 py-1.5 border border-dashed border-amber-600/50 hover:border-amber-500 rounded-xl cursor-pointer text-xs bg-slate-950/80 transition min-w-[160px]">
                 <span class="text-amber-400 font-medium text-center animate-pulse">⚠️ Выбрать global_db.json</span>
                 <input type="file" @change="loadGlobalDbManual" class="hidden" accept=".json">
             </label>
             <div v-else class="px-4 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-emerald-400 font-medium font-mono text-center">
-                ✓ База техники активна
+                ✓ База техники active
             </div>
         </div>
     </header>
 
-    <!-- Main Content Grid -->
     <div class="flex flex-1 overflow-hidden">
-        <!-- Sidebar -->
         <aside class="w-85 border-r border-slate-800 bg-slate-900/20 p-6 flex flex-col gap-5 overflow-y-auto shrink-0">
             
-            <!-- РЕЖИМЫ КАНАЛОВ БОЕВ -->
             <div class="flex bg-slate-950 p-1 border border-slate-800 rounded-xl">
                 <button @click="filters.mode = 'squadron'" :class="filters.mode === 'squadron' ? 'bg-cyan-500 text-black font-bold shadow-lg' : 'text-slate-400 hover:text-slate-200'" class="flex-1 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center justify-center gap-1">
                     💀 1 Жизнь <span class="text-[10px] opacity-70">(СРБ)</span>
@@ -87,7 +78,6 @@
                 </button>
             </div>
 
-            <!-- КАРТОЧКА: [ПОЛК] НИКНЕЙМ + КНОПКА НА УМНОЕ ОБНОВЛЕНИЕ -->
             <div v-if="playerBasics" class="bg-slate-900/30 border border-slate-900 rounded-xl p-4 border-l-2 border-l-cyan-500 animate-fade-in flex flex-col gap-2">
                 <div>
                     <div class="text-[9px] font-bold uppercase text-slate-500 tracking-wider mb-1">Выбранный оперативник</div>
@@ -96,7 +86,6 @@
                             <span class="text-cyan-400 font-mono mr-1.5">[{{ playerBasics.SquadronName || 'ПОЛК' }}]</span>
                             <span>{{ playerBasics.nickname }}</span>
                         </div>
-                        <!-- Динамическая кнопка «Обновить» на основе Basics.uid -->
                         <a v-if="playerBasics.uid" :href="'https://statshark.net/player/' + playerBasics.uid" target="_blank" class="shrink-0 bg-slate-950 hover:bg-cyan-500 hover:text-black border border-slate-800 hover:border-cyan-400 text-[10px] font-bold px-2 py-1 rounded transition flex items-center gap-1">
                             🔄 Обновить
                         </a>
@@ -111,13 +100,11 @@
 
             <hr class="border-slate-900">
 
-            <!-- Search by vehicle name -->
             <div>
                 <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Поиск по названию техники</label>
                 <input type="text" v-model="filters.search" placeholder="Например: Т-34, Leo, Spitfire..." class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-700 outline-none transition">
             </div>
 
-            <!-- BR Week Brackets -->
             <div>
                 <div class="flex justify-between items-center mb-2">
                     <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Границы БР недель</label>
@@ -130,7 +117,6 @@
                 </div>
             </div>
 
-            <!-- Unit Type Filter -->
             <div>
                 <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Класс техники</label>
                 <div class="flex bg-slate-950 p-1 border border-slate-800 rounded-lg">
@@ -140,7 +126,6 @@
                 </div>
             </div>
 
-            <!-- Nations Filter -->
             <div>
                 <div class="flex justify-between items-center mb-2">
                     <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Нации</label>
@@ -155,9 +140,7 @@
             </div>
         </aside>
 
-        <!-- Main Display Content Area -->
         <main class="flex-1 bg-slate-950 p-6 flex flex-col min-w-0 overflow-hidden">
-            <!-- Statistics Dashboard -->
             <div v-if="dbLoaded" class="grid grid-cols-4 gap-4 mb-5 shrink-0">
                 <div class="bg-slate-900/30 border border-slate-900 rounded-xl p-4 flex flex-col justify-between">
                     <div class="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Доступно по фильтрам</div>
@@ -179,7 +162,6 @@
                 </div>
             </div>
 
-            <!-- States -->
             <div v-if="!playerLoaded" class="flex-1 flex flex-col items-center justify-center border border-dashed border-slate-800 rounded-xl bg-slate-900/5 p-12 text-center">
                 <div class="w-10 h-10 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-center text-cyan-500 text-sm font-bold mb-4">i</div>
                 <h3 class="text-slate-300 font-medium text-xs mb-1">Ожидание выбора профиля</h3>
@@ -224,7 +206,7 @@
                                     <span v-if="item.status === 2" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide">
                                         ♠ Пиковая
                                     </span>
-                                    <span v-else-if="item.status === 1" class="bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide">
+                                    <span v-else-if="item.status === 1" class="bg-amber-500/10 border border-emerald-500/30 text-amber-400 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide">
                                         <span v-if="filters.mode === 'squadron'" title="Внимание! Не пиковая техника опасна для СРБ">⚠️ Не топ</span>
                                         <span v-else>✓ Открыта</span>
                                     </span>
@@ -242,7 +224,7 @@
 </div>
 
 <script>
-    const { createApp, ref, computed, reactive, onMounted } = Vue;
+    const { createApp, ref, computed, reactive, onMounted, watch } = Vue;
 
     // ⚙️ ЗАПОЛНИ СВОИ НАСТРОЙКИ РЕПОЗИТОРИЯ ТУТ:
     const GH_CONFIG = {
@@ -260,9 +242,7 @@
             const playerLoaded = ref(false);
             const isFallbackActive = ref(false);
 
-            // Реактивный массив, который мы наполним прямо из папки GitHub
             const cloudPlayers = ref([]);
-
             const playerSearchQuery = ref('');
             const showSuggestions = ref(false);
             const isExtensionInstalled = ref(false);
@@ -283,8 +263,23 @@
                 mode: 'squadron'
             });
 
+            // 🧠 ЖИВОЙ НАБЛЮДАТЕЛЬ ЗА ВВОДОМ РУКАМИ ИЛИ АВТОЗАПОЛНЕНИЕМ
+            watch(playerSearchQuery, (newVal) => {
+                if (!newVal) return;
+                
+                // Проверяем точное совпадение строки с ником из базы гитхаба (регистронезависимо)
+                const targetLower = newVal.trim().toLowerCase();
+                const exactMatch = cloudPlayers.value.find(name => name.toLowerCase() === targetLower);
+                
+                // Если нашли стопроцентное совпадение — авто-переходим к профилю
+                if (exactMatch && activePlayerUid.value !== 'cloud_' + exactMatch) {
+                    activePlayerUid.value = 'cloud_' + exactMatch;
+                    showSuggestions.value = false;
+                    switchPlayer();
+                }
+            });
+
             onMounted(() => {
-                // 1. Проверяем флаг расширения
                 if (document.documentElement.dataset.wtExtension === "true") {
                     isExtensionInstalled.value = true;
                 }
@@ -292,7 +287,7 @@
                     isExtensionInstalled.value = true;
                 });
 
-                // 2. Сканируем папки GitHub в поисках реальных профилей
+                // Сканируем гитхаб
                 fetch(`https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/players`)
                     .then(res => { if (res.ok) return res.json(); throw new Error(); })
                     .then(data => {
@@ -302,22 +297,21 @@
                         initHub();
                     })
                     .catch(() => {
-                        console.error("Не удалось просканировать папку players/ в GitHub. Проверьте настройки репозитория.");
+                        console.error("Не удалось просканировать папку игроков.");
                         initHub();
                     });
 
-                // 3. Грузим глобальную БД
+                // База техники
                 fetch('global_db.json')
                     .then(res => { if (!res.ok) throw new Error(); return res.json(); })
                     .then(data => { globalDb.value = data; dbLoaded.value = true; })
-                    .catch(() => { console.log("Блокировка CORS. Ожидание ручного импорта БД."); });
+                    .catch(() => { console.log("Блокировка CORS."); });
             });
 
             const initHub = () => {
                 const lastUid = localStorage.getItem('wt_active_uid');
                 if (lastUid && lastUid.startsWith('cloud_')) {
                     const nickname = lastUid.replace('cloud_', '');
-                    // Проверяем, существует ли этот файл физически в репозитории прямо сейчас
                     if (cloudPlayers.value.includes(nickname)) {
                         activePlayerUid.value = lastUid;
                         playerSearchQuery.value = nickname;
@@ -355,15 +349,12 @@
                 reader.readAsText(file);
             };
 
+            // Выбор через клик по подсказке в меню
             const selectPlayer = (name) => {
                 playerSearchQuery.value = name;
                 activePlayerUid.value = 'cloud_' + name;
                 showSuggestions.value = false;
                 switchPlayer();
-            };
-
-            const hideSuggestionsWithDelay = () => {
-                setTimeout(() => { showSuggestions.value = false; }, 250);
             };
 
             const switchPlayer = () => {
@@ -374,7 +365,7 @@
                     const nickname = uid.replace('cloud_', '');
                     playerLoaded.value = false;
                     
-                    fetch(`players/${nickname}.json`)
+                    fetch(`players/${nickname}.json?t=` + Date.now()) // Сброс кэша браузера
                         .then(res => { if (!res.ok) throw new Error("Документ не найден"); return res.json(); })
                         .then(data => {
                             savedProfiles.value[uid] = {
@@ -482,7 +473,7 @@
 
             return {
                 filters, dbLoaded, playerLoaded, brBrackets, nationsMap, currentTableData, dashboardStats, isFallbackActive, playerBasics, activePlayerUid, cloudPlayers, playerSearchQuery, showSuggestions, filteredCloudPlayers, isExtensionInstalled,
-                loadGlobalDbManual, toggleBr, resetBrs, resetNations, switchPlayer, selectPlayer, hideSuggestionsWithDelay
+                loadGlobalDbManual, toggleBr, resetBrs, resetNations, switchPlayer, selectPlayer
             };
         }
     }).mount('#app');
