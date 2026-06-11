@@ -13,13 +13,16 @@
 <body class="h-full antialiased font-sans selection:bg-cyan-500 selection:text-black">
 
 <div id="app" class="flex flex-col h-screen" v-cloak>
+    <!-- Header -->
     <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur px-6 py-4 flex items-center justify-between shrink-0">
         <div class="flex items-center gap-8 flex-1">
+            <!-- Title -->
             <div class="flex items-center gap-3 shrink-0">
                 <div class="w-2.5 h-2.5 rounded-full" :class="dbLoaded ? 'bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'bg-amber-500 animate-pulse'"></div>
-                <h1 class="text-sm font-bold tracking-widest text-slate-200 uppercase">WT Squadron Hub v3.9</h1>
+                <h1 class="text-sm font-bold tracking-widest text-slate-200 uppercase">WT Squadron Hub v4.0</h1>
             </div>
             
+            <!-- Поиск оперативников -->
             <div id="search-component-container" class="relative w-72">
                 <input 
                     type="text" 
@@ -29,6 +32,7 @@
                     :placeholder="cloudPlayers.length ? `Поиск оперативника (всего: ${cloudPlayers.length})...` : 'Загрузка базы оперативников...'" 
                     class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-600 outline-none transition"
                 >
+                <!-- Выпадающий список -->
                 <div v-if="showSuggestions" class="absolute left-0 right-0 mt-1 bg-slate-900 border border-slate-800 rounded-lg shadow-2xl max-h-48 overflow-y-auto z-50 divide-y divide-slate-950">
                     <button 
                         v-for="name in filteredCloudPlayers" 
@@ -53,6 +57,7 @@
             </div>
         </div>
         
+        <!-- Right side DB Info -->
         <div class="flex items-center gap-4 shrink-0">
             <label v-if="!dbLoaded" class="flex flex-col justify-center px-3 py-1.5 border border-dashed border-amber-600/50 hover:border-amber-500 rounded-xl cursor-pointer text-xs bg-slate-950/80 transition min-w-[160px]">
                 <span class="text-amber-400 font-medium text-center animate-pulse">⚠️ Выбрать global_db.json</span>
@@ -64,9 +69,12 @@
         </div>
     </header>
 
+    <!-- Main Content Grid -->
     <div class="flex flex-1 overflow-hidden">
+        <!-- Sidebar -->
         <aside class="w-85 border-r border-slate-800 bg-slate-900/20 p-6 flex flex-col gap-5 overflow-y-auto shrink-0">
             
+            <!-- РЕЖИМЫ КАНАЛОВ БОЕВ -->
             <div class="flex bg-slate-950 p-1 border border-slate-800 rounded-xl">
                 <button @click="filters.mode = 'squadron'" :class="filters.mode === 'squadron' ? 'bg-cyan-500 text-black font-bold shadow-lg' : 'text-slate-400 hover:text-slate-200'" class="flex-1 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center justify-center gap-1">
                     💀 1 Жизнь <span class="text-[10px] opacity-70">(СРБ)</span>
@@ -76,6 +84,7 @@
                 </button>
             </div>
 
+            <!-- КАРТОЧКА: [ПОЛК] НИКНЕЙМ -->
             <div v-if="playerBasics" class="bg-slate-900/30 border border-slate-900 rounded-xl p-4 border-l-2 border-l-cyan-500 animate-fade-in flex flex-col gap-2">
                 <div>
                     <div class="text-[9px] font-bold uppercase text-slate-500 tracking-wider mb-1">Выбранный оперативник</div>
@@ -89,7 +98,6 @@
                         </a>
                     </div>
                 </div>
-                
                 <div v-if="playerBasics.lastUpdate" class="border-t border-slate-950 pt-2 flex justify-between items-center text-[10px] font-mono text-slate-500">
                     <span>Обновлен:</span>
                     <span class="text-slate-400 font-bold">{{ playerBasics.lastUpdate }}</span>
@@ -98,47 +106,76 @@
 
             <hr class="border-slate-900">
 
+            <!-- Search by vehicle name -->
             <div>
                 <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Поиск по названию техники</label>
                 <input type="text" v-model="filters.search" placeholder="Например: Т-34, Leo, Spitfire..." class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-700 outline-none transition">
             </div>
 
+            <!-- 🔢 ГРАНИЦЫ БР НЕДЕЛЬ (РАЗДЕЛЕННЫЕ ЯЧЕЙКИ СО СЧЕТЧИКАМИ) -->
             <div>
                 <div class="flex justify-between items-center mb-2">
                     <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Границы БР недель</label>
                     <button @click="resetBrs" class="text-[10px] text-cyan-500 hover:underline cursor-pointer">Сбросить</button>
                 </div>
                 <div class="grid grid-cols-3 gap-1">
-                    <button v-for="br in brBrackets" :key="br" @click="toggleBr(br)" :class="filters.brs.includes(br) ? 'bg-cyan-500 text-black border-cyan-400 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'" class="border py-1 rounded text-xs transition cursor-pointer font-mono">
-                        {{ br.toFixed(1) }}
+                    <button v-for="br in brBrackets" :key="br" @click="toggleBr(br)" 
+                        :class="filters.brs.includes(br) ? 'bg-cyan-500 text-black border-cyan-400 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'" 
+                        class="border rounded text-xs transition cursor-pointer font-mono flex overflow-hidden h-7 items-stretch">
+                        <!-- Левая часть: Значение БР -->
+                        <span class="flex-1 flex items-center justify-center border-r text-[11px]" :class="filters.brs.includes(br) ? 'border-cyan-600' : 'border-slate-900'">
+                            {{ br.toFixed(1) }}
+                        </span>
+                        <!-- Правая часть: Счетчик машин игрока -->
+                        <span class="w-7 flex items-center justify-center text-[10px] font-bold" :class="filters.brs.includes(br) ? 'bg-cyan-600/30 text-black' : 'bg-slate-900/40 text-slate-500'">
+                            {{ brCounters[br] || 0 }}
+                        </span>
                     </button>
                 </div>
             </div>
 
+            <!-- 🛠️ КЛАСС ТЕХНИКИ (С КАНАЛЬНЫМИ СЧЕТЧИКАМИ) -->
             <div>
                 <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Класс техники</label>
                 <div class="flex bg-slate-950 p-1 border border-slate-800 rounded-lg">
-                    <button @click="filters.type = 'all'" :class="filters.type === 'all' ? 'bg-slate-900 text-cyan-400 font-bold' : 'text-slate-500'" class="flex-1 py-1 rounded text-[11px] transition cursor-pointer">Все</button>
-                    <button @click="filters.type = 'tank'" :class="filters.type === 'tank' ? 'bg-slate-900 text-cyan-400 font-bold' : 'text-slate-500'" class="flex-1 py-1 rounded text-[11px] transition cursor-pointer">Танки</button>
-                    <button @click="filters.type = 'air'" :class="filters.type === 'air' ? 'bg-slate-900 text-cyan-400 font-bold' : 'text-slate-500'" class="flex-1 py-1 rounded text-[11px] transition cursor-pointer">Летка</button>
+                    <button @click="filters.type = 'all'" :class="filters.type === 'all' ? 'bg-slate-900 text-cyan-400 font-bold' : 'text-slate-500'" class="flex-1 py-1 rounded text-[11px] transition cursor-pointer text-center">
+                        Все <span class="text-[9px] opacity-50 font-mono">({{ typeCounters.all }})</span>
+                    </button>
+                    <button @click="filters.type = 'tank'" :class="filters.type === 'tank' ? 'bg-slate-900 text-cyan-400 font-bold' : 'text-slate-500'" class="flex-1 py-1 rounded text-[11px] transition cursor-pointer text-center">
+                        Танки <span class="text-[9px] opacity-60 font-mono">({{ typeCounters.tank }})</span>
+                    </button>
+                    <button @click="filters.type = 'air'" :class="filters.type === 'air' ? 'bg-slate-900 text-cyan-400 font-bold' : 'text-slate-500'" class="flex-1 py-1 rounded text-[11px] transition cursor-pointer text-center">
+                        Летка <span class="text-[9px] opacity-60 font-mono">({{ typeCounters.air }})</span>
+                    </button>
                 </div>
             </div>
 
+            <!-- 🌍 НАЦИИ (С МАТРИЧНЫМИ СЧЕТЧИКАМИ СТАТУСА ЕСТЬ \ ТОП) -->
             <div>
                 <div class="flex justify-between items-center mb-2">
                     <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Нации</label>
                     <button @click="resetNations" class="text-[10px] text-cyan-500 hover:underline cursor-pointer">Сбросить</button>
                 </div>
-                <div class="space-y-1 max-h-40 overflow-y-auto pr-1 border border-slate-900 p-1.5 rounded-lg bg-slate-950/40">
-                    <label v-for="(label, key) in nationsMap" :key="key" class="flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-900 cursor-pointer text-xs transition">
-                        <input type="checkbox" v-model="filters.nations" :value="key" class="rounded border-slate-800 text-cyan-500 focus:ring-0 bg-slate-900">
-                        <span class="text-slate-400">{{ label }}</span>
+                <div class="space-y-1 max-h-44 overflow-y-auto pr-1 border border-slate-900 p-1.5 rounded-lg bg-slate-950/40 divide-y divide-slate-900/30">
+                    <label v-for="(label, key) in nationsMap" :key="key" class="flex items-center justify-between px-2 py-1 rounded hover:bg-slate-900 cursor-pointer text-xs transition">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" v-model="filters.nations" :value="key" class="rounded border-slate-800 text-cyan-500 focus:ring-0 bg-slate-900">
+                            <span class="text-slate-400">{{ label }}</span>
+                        </div>
+                        <!-- Блок Есть \ Топ -->
+                        <span class="text-[10px] font-mono text-slate-600 shrink-0">
+                            <span class="text-amber-500/80 font-bold" title="В наличии под текущие фильтры">{{ nationCounters[key]?.owned || 0 }}</span><!--
+                         --><span class="opacity-40 font-sans mx-0.5">\</span><!--
+                         --><span class="text-emerald-400 font-bold" title="В пиках (топ) под текущие фильтры">{{ nationCounters[key]?.spaded || 0 }}</span>
+                        </span>
                     </label>
                 </div>
             </div>
         </aside>
 
+        <!-- Main Display Content Area -->
         <main class="flex-1 bg-slate-950 p-6 flex flex-col min-w-0 overflow-hidden">
+            <!-- Dashboard Statistics -->
             <div v-if="dbLoaded" class="grid grid-cols-4 gap-4 mb-5 shrink-0">
                 <div class="bg-slate-900/30 border border-slate-900 rounded-xl p-4 flex flex-col justify-between">
                     <div class="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Доступно по фильтрам</div>
@@ -160,6 +197,7 @@
                 </div>
             </div>
 
+            <!-- Table -->
             <div v-if="!playerLoaded" class="flex-1 flex flex-col items-center justify-center border border-dashed border-slate-800 rounded-xl bg-slate-900/5 p-12 text-center">
                 <div class="w-10 h-10 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-center text-cyan-500 text-sm font-bold mb-4">i</div>
                 <h3 class="text-slate-300 font-medium text-xs mb-1">Ожидание выбора профиля</h3>
@@ -177,7 +215,7 @@
                             <tr>
                                 <th class="p-3 pl-4">Название машины</th>
                                 <th class="p-3">Тип</th>
-                                <th class="p-3 relaunch">Нация</th>
+                                <th class="p-3">Нация</th>
                                 <th class="p-3 text-center">Игровой БР</th>
                                 <th class="p-3 text-center">Порог СРБ</th>
                                 <th class="p-3 text-center">Статус Модулей</th>
@@ -224,6 +262,11 @@
 <script>
     const { createApp, ref, computed, reactive, onMounted, watch } = Vue;
 
+    const GH_CONFIG = {
+        owner: "твой_логин_github",
+        repo: "название_репозитория"
+    };
+
     createApp({
         setup() {
             const globalDb = ref({});
@@ -255,7 +298,90 @@
                 mode: 'squadron'
             });
 
-            // Автопереход к профилю при полном совпадении строк
+            // 1. ДИНАМИЧЕСКИЕ СЧЕТЧИКИ ДЛЯ КНОПОК БР (Влияет класс техники и нации)
+            const brCounters = computed(() => {
+                const counts = {};
+                brBrackets.forEach(b => counts[b] = 0);
+                if (!playerLoaded.value || !dbLoaded.value) return counts;
+
+                for (const [vId, meta] of Object.entries(globalDb.value)) {
+                    let status = playerStats.value[meta.country]?.[vId] || 0;
+                    if (status === 0) continue; // Считаем только то, что открыто/куплено
+
+                    let realBr = meta.battleRatingHistorical || 1.0;
+                    if (meta.unitMoveType === 'air') {
+                        realBr = (filters.mode === 'squadron') ? (meta.battleRatingTankHistorical || meta.battleRatingHistorical || 1.0) : meta.battleRatingHistorical;
+                    }
+                    const bracket = matchBracket(realBr);
+                    const isAir = meta.unitMoveType === 'air';
+
+                    // Фильтруем по ВСЕМ критериям, КРОМЕ самого БР
+                    if (filters.search && !meta.name.toLowerCase().includes(filters.search.toLowerCase()) && !vId.toLowerCase().includes(filters.search.toLowerCase())) continue;
+                    if (filters.type === 'tank' && isAir) continue;
+                    if (filters.type === 'air' && !isAir) continue;
+                    if (filters.nations.length && !filters.nations.includes(meta.country)) continue;
+
+                    if (counts[bracket] !== undefined) counts[bracket]++;
+                }
+                return counts;
+            });
+
+            // 2. ДИНАМИЧЕСКИЕ СЧЕТЧИКИ ДЛЯ КЛАССОВ ТЕХНИКИ (Влияет БР и нации)
+            const typeCounters = computed(() => {
+                const counts = { all: 0, tank: 0, air: 0 };
+                if (!playerLoaded.value || !dbLoaded.value) return counts;
+
+                for (const [vId, meta] of Object.entries(globalDb.value)) {
+                    let status = playerStats.value[meta.country]?.[vId] || 0;
+                    if (status === 0) continue;
+
+                    let realBr = meta.battleRatingHistorical || 1.0;
+                    if (meta.unitMoveType === 'air') {
+                        realBr = (filters.mode === 'squadron') ? (meta.battleRatingTankHistorical || meta.battleRatingHistorical || 1.0) : meta.battleRatingHistorical;
+                    }
+                    const bracket = matchBracket(realBr);
+                    const isAir = meta.unitMoveType === 'air';
+
+                    if (filters.search && !meta.name.toLowerCase().includes(filters.search.toLowerCase()) && !vId.toLowerCase().includes(filters.search.toLowerCase())) continue;
+                    if (filters.brs.length && !filters.brs.includes(bracket)) continue;
+                    if (filters.nations.length && !filters.nations.includes(meta.country)) continue;
+
+                    counts.all++;
+                    if (isAir) counts.air++;
+                    else counts.tank++;
+                }
+                return counts;
+            });
+
+            // 3. ДИНАМИЧЕСКИЕ СЧЕТЧИКИ ДЛЯ НАЦИЙ ЕСТЬ \ ТОП (Влияет БР и Класс техники)
+            const nationCounters = computed(() => {
+                const counts = {};
+                Object.keys(nationsMap).forEach(k => counts[k] = { owned: 0, spaded: 0 });
+                if (!playerLoaded.value || !dbLoaded.value) return counts;
+
+                for (const [vId, meta] of Object.entries(globalDb.value)) {
+                    if (!nationsMap[meta.country]) continue;
+                    let status = playerStats.value[meta.country]?.[vId] || 0;
+                    if (status === 0) continue;
+
+                    let realBr = meta.battleRatingHistorical || 1.0;
+                    if (meta.unitMoveType === 'air') {
+                        realBr = (filters.mode === 'squadron') ? (meta.battleRatingTankHistorical || meta.battleRatingHistorical || 1.0) : meta.battleRatingHistorical;
+                    }
+                    const bracket = matchBracket(realBr);
+                    const isAir = meta.unitMoveType === 'air';
+
+                    if (filters.search && !meta.name.toLowerCase().includes(filters.search.toLowerCase()) && !vId.toLowerCase().includes(filters.search.toLowerCase())) continue;
+                    if (filters.brs.length && !filters.brs.includes(bracket)) continue;
+                    if (filters.type === 'tank' && isAir) continue;
+                    if (filters.type === 'air' && !isAir) continue;
+
+                    counts[meta.country].owned++;
+                    if (status === 2) counts[meta.country].spaded++;
+                }
+                return counts;
+            });
+
             watch(playerSearchQuery, (newVal) => {
                 if (!newVal) return;
                 const targetLower = newVal.trim().toLowerCase();
@@ -276,7 +402,6 @@
                     isExtensionInstalled.value = true;
                 });
 
-                // Надежный закрыватель окон
                 window.addEventListener('click', (e) => {
                     const searchBox = document.getElementById('search-component-container');
                     if (searchBox && !searchBox.contains(e.target)) {
@@ -284,23 +409,14 @@
                     }
                 });
 
-                // 🌐 СКАЧИВАЕМ СТАТИЧНЫЙ РЕЕСТР ПРОФИЛЕЙ
                 fetch('players_list.json?t=' + Date.now())
-                    .then(res => { 
-                        if (!res.ok) throw new Error("Файл списка еще не создан на сервере"); 
-                        return res.json(); 
-                    })
+                    .then(res => { if (!res.ok) throw new Error(); return res.json(); })
                     .then(data => {
                         cloudPlayers.value = Array.isArray(data) ? data : [];
-                        console.log("[WT Hub] Успешно загружен реестр бойцов:", cloudPlayers.value);
                         initHub();
                     })
-                    .catch((err) => {
-                        console.log("[WT Hub] Инфо:", err.message);
-                        initHub();
-                    });
+                    .catch(() => { initHub(); });
 
-                // База техники Gaijin
                 fetch('global_db.json')
                     .then(res => { if (!res.ok) throw new Error(); return res.json(); })
                     .then(data => { globalDb.value = data; dbLoaded.value = true; })
@@ -405,7 +521,7 @@
                 return {
                     id: vId,
                     name: meta.name,
-                    type: isAir ? 'Лтка' : 'Танк',
+                    type: isAir ? 'Летка' : 'Танк',
                     country: meta.country,
                     br: realBr,
                     bracket: bracket,
@@ -470,7 +586,7 @@
             });
 
             return {
-                filters, dbLoaded, playerLoaded, brBrackets, nationsMap, currentTableData, dashboardStats, isFallbackActive, playerBasics, activePlayerUid, cloudPlayers, playerSearchQuery, showSuggestions, filteredCloudPlayers, isExtensionInstalled,
+                filters, dbLoaded, playerLoaded, brBrackets, nationsMap, currentTableData, dashboardStats, isFallbackActive, playerBasics, activePlayerUid, cloudPlayers, playerSearchQuery, showSuggestions, filteredCloudPlayers, isExtensionInstalled, brCounters, typeCounters, nationCounters,
                 loadGlobalDbManual, toggleBr, resetBrs, resetNations, switchPlayer, selectPlayer
             };
         }
