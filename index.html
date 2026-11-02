@@ -3,30 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WT — Squadron Analytics Pro</title>
+    <title>WT — Squadron Analytics & Squad Hub Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
         [v-cloak] { display: none !important; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
     </style>
 </head>
 <body class="h-full antialiased font-sans selection:bg-cyan-500 selection:text-black">
 
 <div id="app" class="flex flex-col h-screen" v-cloak>
-    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur px-6 py-4 flex items-center justify-between shrink-0">
-        <div class="flex items-center gap-8 flex-1">
+    <!-- ШАПКА ХАБА С НАВИГАЦИЕЙ РАЗДЕЛОВ -->
+    <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur px-6 py-3.5 flex items-center justify-between shrink-0 gap-4">
+        <div class="flex items-center gap-6 flex-1 min-w-0">
+            <!-- Логотип -->
             <div class="flex items-center gap-3 shrink-0">
                 <div class="w-2.5 h-2.5 rounded-full" :class="dbLoaded ? 'bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'bg-amber-500 animate-pulse'"></div>
-                <h1 class="text-sm font-bold tracking-widest text-slate-200 uppercase">WT Squadron Hub v4.1</h1>
+                <div class="flex flex-col">
+                    <h1 class="text-xs font-black tracking-widest text-slate-200 uppercase leading-none">WT Squadron Hub</h1>
+                    <span class="text-[9px] font-mono text-cyan-400 font-bold mt-0.5">v4.3 Pro</span>
+                </div>
             </div>
+
+            <!-- ПЕРЕКЛЮЧАТЕЛЬ ГЛАВНЫХ РАЗДЕЛОВ -->
+            <nav class="flex items-center bg-slate-950 p-1 border border-slate-800 rounded-xl shrink-0">
+                <button 
+                    @click="activeMainTab = 'squadron'" 
+                    :class="activeMainTab === 'squadron' ? 'bg-cyan-500 text-black font-black shadow-[0_0_15px_rgba(6,182,212,0.3)]' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'" 
+                    class="px-3.5 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center gap-1.5"
+                >
+                    <span>⚔️</span>
+                    <span>Сетапы и Сквад</span>
+                </button>
+                <button 
+                    @click="activeMainTab = 'tournaments'" 
+                    :class="activeMainTab === 'tournaments' ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black font-black shadow-[0_0_15px_rgba(245,158,11,0.3)]' : 'text-amber-500/80 hover:text-amber-400 hover:bg-amber-500/10'" 
+                    class="px-3.5 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center gap-1.5"
+                >
+                    <span>🏆</span>
+                    <span>Турниры TSS</span>
+                </button>
+            </nav>
             
-            <div id="search-component-container" class="relative w-72">
+            <!-- Поиск бойца по реестру -->
+            <div id="search-component-container" class="relative w-64 max-w-xs">
                 <input 
                     type="text" 
                     v-model="playerSearchQuery" 
                     @focus="showSuggestions = true"
                     @input="showSuggestions = true"
-                    :placeholder="cloudPlayers.length ? `Поиск оперативника (всего: ${cloudPlayers.length})...` : 'Загрузка базы оперативников...'" 
+                    :placeholder="cloudPlayers.length ? `Поиск бойца (${cloudPlayers.length})...` : 'Загрузка бойцов...'" 
                     class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-600 outline-none transition"
                 >
                 <div v-if="showSuggestions" class="absolute left-0 right-0 mt-1 bg-slate-900 border border-slate-800 rounded-lg shadow-2xl max-h-48 overflow-y-auto z-50 divide-y divide-slate-950">
@@ -34,7 +64,7 @@
                         v-for="name in filteredCloudPlayers" 
                         :key="name" 
                         @click="selectPlayer(name)"
-                        class="w-full text-left px-3 py-2 text-xs hover:bg-slate-800 text-slate-300 hover:text-cyan-400 transition cursor-pointer font-medium block"
+                        class="w-full text-left px-3 py-2 text-xs hover:bg-slate-800 text-slate-300 hover:text-cyan-400 transition cursor-pointer font-medium block truncate"
                     >
                         👤 {{ name }}
                     </button>
@@ -53,231 +83,828 @@
             </div>
         </div>
         
+        <!-- Статус базы техники -->
         <div class="flex items-center gap-4 shrink-0">
             <label v-if="!dbLoaded" class="flex flex-col justify-center px-3 py-1.5 border border-dashed border-amber-600/50 hover:border-amber-500 rounded-xl cursor-pointer text-xs bg-slate-950/80 transition min-w-[160px]">
                 <span class="text-amber-400 font-medium text-center animate-pulse">⚠️ Выбрать global_db.json</span>
                 <input type="file" @change="loadGlobalDbManual" class="hidden" accept=".json">
             </label>
-            <div v-else class="px-4 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-emerald-400 font-medium font-mono text-center">
-                ✓ База техники активна
+            <div v-else class="px-3 py-1 bg-slate-900/90 border border-slate-800 rounded-lg text-[11px] text-emerald-400 font-medium font-mono flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span>База техники Gaijin OK</span>
             </div>
         </div>
     </header>
 
     <div class="flex flex-1 overflow-hidden">
-        <aside class="w-85 border-r border-slate-800 bg-slate-900/20 p-6 flex flex-col gap-5 overflow-y-auto shrink-0">
+        <!-- БОКОВОЕ МЕНЮ ФИЛЬТРОВ И УПРАВЛЕНИЯ -->
+        <aside class="w-80 border-r border-slate-800 bg-slate-900/20 p-5 flex flex-col gap-4 overflow-y-auto shrink-0">
             
-            <div class="flex flex-col gap-1 bg-slate-950 p-1 border border-slate-800 rounded-xl">
-                <div class="flex gap-1 w-full">
-                    <button @click="changeGlobalMode('squadron')" :class="filters.mode === 'squadron' ? 'bg-cyan-500 text-black font-bold shadow-lg' : 'text-slate-400 hover:text-slate-200'" class="flex-1 py-1.5 rounded-lg text-[11px] transition cursor-pointer flex items-center justify-center gap-1">
-                        💀 СРБ
-                    </button>
-                    <button @click="changeGlobalMode('multi')" :class="filters.mode === 'multi' ? 'bg-slate-800 text-cyan-400 font-bold border-cyan-500/10' : 'text-slate-400 hover:text-slate-200'" class="flex-1 py-1.5 rounded-lg text-[11px] transition cursor-pointer flex items-center justify-center gap-1">
-                        🔄 Мульти
-                    </button>
-                </div>
-                <button @click="changeGlobalMode('tournament')" :class="filters.mode === 'tournament' ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black font-black shadow-lg' : 'text-amber-500/80 hover:text-amber-400 bg-amber-500/5'" class="w-full py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center justify-center gap-1 border border-amber-500/10">
-                    🏆 Режим «Турниры TSS»
-                </button>
-            </div>
-
-            <label class="flex items-center justify-between p-2.5 bg-slate-900/40 border border-slate-900 rounded-xl cursor-pointer hover:bg-slate-900/70 transition">
-                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Скрытая техника</span>
-                <div class="relative">
-                    <input type="checkbox" v-model="filters.showHidden" class="sr-only peer">
-                    <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-slate-400 peer-checked:after:bg-cyan-400 after:border-none after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-950 border border-slate-700"></div>
-                </div>
-            </label>
-
-            <div v-if="playerBasics" class="bg-slate-900/30 border border-slate-900 rounded-xl p-4 border-l-2 border-l-cyan-500 animate-fade-in flex flex-col gap-2">
+            <!-- Карточка выбранного бойца -->
+            <div v-if="playerBasics" class="bg-slate-900/40 border border-slate-800 rounded-xl p-3.5 border-l-2 border-l-cyan-500 flex flex-col gap-2">
                 <div>
-                    <div class="text-[9px] font-bold uppercase text-slate-500 tracking-wider mb-1">Выбранный оперативник</div>
-                    <div class="text-sm font-black text-slate-200 flex items-center justify-between gap-2">
+                    <div class="text-[9px] font-bold uppercase text-slate-500 tracking-wider mb-0.5">Оперативник</div>
+                    <div class="text-xs font-black text-slate-200 flex items-center justify-between gap-2">
                         <div class="truncate">
-                            <span class="text-cyan-400 font-mono mr-1.5">[{{ playerBasics.SquadronName || 'ПОЛК' }}]</span>
+                            <span class="text-cyan-400 font-mono mr-1">[{{ playerBasics.SquadronName || 'ПОЛК' }}]</span>
                             <span>{{ playerBasics.nickname }}</span>
                         </div>
-                        <a v-if="playerBasics.uid" :href="'https://statshark.net/player/' + playerBasics.uid" target="_blank" class="shrink-0 bg-slate-950 hover:bg-cyan-500 hover:text-black border border-slate-800 hover:border-cyan-400 text-[10px] font-bold px-2 py-1 rounded transition flex items-center gap-1">
-                            🔄 Обновить
+                        <a v-if="playerBasics.uid" :href="'https://statshark.net/player/' + playerBasics.uid" target="_blank" class="shrink-0 bg-slate-950 hover:bg-cyan-500 hover:text-black border border-slate-800 hover:border-cyan-400 text-[10px] font-bold px-2 py-0.5 rounded transition flex items-center gap-1">
+                            🔄 StatShark
                         </a>
                     </div>
                 </div>
-                <div v-if="playerBasics.lastUpdate" class="border-t border-slate-950 pt-2 flex justify-between items-center text-[10px] font-mono text-slate-500">
-                    <span>Обновлен:</span>
+                <div v-if="playerBasics.lastUpdate" class="border-t border-slate-900 pt-1.5 flex justify-between items-center text-[9px] font-mono text-slate-500">
+                    <span>Синхронизирован:</span>
                     <span class="text-slate-400 font-bold">{{ playerBasics.lastUpdate }}</span>
                 </div>
             </div>
 
-            <div v-if="filters.mode === 'tournament'" class="bg-amber-500/5 border border-amber-500/10 rounded-xl p-4 flex flex-col gap-4 animate-fade-in">
-                <div>
-                    <label class="block text-[10px] font-bold uppercase tracking-wider text-amber-500 mb-2">Категория турнира</label>
-                    <div class="grid grid-cols-2 gap-1 bg-slate-950 p-1 border border-slate-900 rounded-lg">
-                        <button @click="filters.tourType = 'tank'" :class="filters.tourType === 'tank' ? 'bg-amber-500 text-black font-bold' : 'text-slate-400'" class="py-1 rounded text-[10px] font-medium transition cursor-pointer">🪖 Танки</button>
-                        <button @click="filters.tourType = 'air'" :class="filters.tourType === 'air' ? 'bg-amber-500 text-black font-bold' : 'text-slate-400'" class="py-1 rounded text-[10px] font-medium transition cursor-pointer">✈️ Авиа</button>
-                        <button @click="filters.tourType = 'mixed'" :class="filters.tourType === 'mixed' ? 'bg-amber-500 text-black font-bold' : 'text-slate-400'" class="py-1 rounded text-[10px] font-medium transition cursor-pointer">⚔️ Смеш.</button>
-                        <button @click="filters.tourType = 'naval'" :class="filters.tourType === 'naval' ? 'bg-amber-500 text-black font-bold' : 'text-slate-400'" class="py-1 rounded text-[10px] font-medium transition cursor-pointer">⚓ Морские</button>
+            <!-- Тумблер скрытой техники -->
+            <label class="flex items-center justify-between p-2.5 bg-slate-900/40 border border-slate-800 rounded-xl cursor-pointer hover:bg-slate-900/70 transition">
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Скрытая техника</span>
+                <div class="relative">
+                    <input type="checkbox" v-model="filters.showHidden" class="sr-only peer">
+                    <div class="w-8 h-4.5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-slate-400 peer-checked:after:bg-cyan-400 after:border-none after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-950 border border-slate-700"></div>
+                </div>
+            </label>
+
+            <!-- ======================================================== -->
+            <!-- БЛОК УПРАВЛЕНИЯ: РАЗДЕЛ СЕТАПЫ И СКВАД                   -->
+            <!-- ======================================================== -->
+            <template v-if="activeMainTab === 'squadron'">
+                <!-- Переключатель под-режимов: Сквад ТРБ / СРБ / Мульти -->
+                <div class="flex flex-col gap-1 bg-slate-950 p-1 border border-slate-800 rounded-xl">
+                    <button 
+                        @click="filters.mode = 'squad'" 
+                        :class="filters.mode === 'squad' ? 'bg-cyan-500 text-black font-black shadow-md' : 'text-slate-400 hover:text-slate-200'" 
+                        class="w-full py-2 rounded-lg text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                        <span>🤝</span>
+                        <span>Сквад ТРБ (Быстрый сетап)</span>
+                    </button>
+                    <div class="flex gap-1 w-full pt-0.5">
+                        <button 
+                            @click="filters.mode = 'squadron'" 
+                            :class="filters.mode === 'squadron' ? 'bg-slate-800 text-cyan-400 font-bold border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200'" 
+                            class="flex-1 py-1.5 rounded-lg text-[11px] transition cursor-pointer flex items-center justify-center gap-1"
+                        >
+                            💀 СРБ (Полковые)
+                        </button>
+                        <button 
+                            @click="filters.mode = 'multi'" 
+                            :class="filters.mode === 'multi' ? 'bg-slate-800 text-cyan-400 font-bold border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200'" 
+                            class="flex-1 py-1.5 rounded-lg text-[11px] transition cursor-pointer flex items-center justify-center gap-1"
+                        >
+                            🔄 Мульти
+                        </button>
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-[10px] font-bold uppercase tracking-wider text-amber-500 mb-1.5">Номера сетапов TSS (всего: {{ availableTourPresets.length }})</label>
-                    <select v-model="filters.tourPresetId" class="w-full bg-slate-950 border border-slate-900 focus:border-amber-500 rounded-lg px-2 py-2 text-xs text-slate-200 font-mono font-medium outline-none cursor-pointer">
-                        <option value="" disabled>-- Выберите сетап --</option>
-                        <option v-for="preset in availableTourPresets" :key="preset.id" :value="preset.id">
-                            {{ preset.name }}
-                        </option>
-                    </select>
-                </div>
-
-                <div v-if="activePresetData" class="bg-slate-950/60 border border-slate-900 p-2.5 rounded-lg flex items-center justify-between text-[11px]">
-                    <span class="text-slate-500 font-medium">Формат боя:</span>
-                    <span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded font-bold font-mono">
-                        {{ activePresetData.teamFormat }}x{{ activePresetData.teamFormat }}
-                    </span>
-                </div>
-            </div>
-
-            <hr class="border-slate-900">
-
-            <div v-if="filters.mode !== 'tournament'">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Поиск по названию техники</label>
-                <input type="text" v-model="filters.search" placeholder="Например: Т-34, Leo, Spitfire..." class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-700 outline-none transition">
-            </div>
-
-            <div v-if="filters.mode !== 'tournament'">
-                <div class="flex justify-between items-center mb-2">
-                    <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Границы БР недель</label>
-                    <button @click="resetBrs" class="text-[10px] text-cyan-500 hover:underline cursor-pointer">Сбросить</button>
-                </div>
-                <div class="grid grid-cols-3 gap-1">
-                    <button v-for="br in brBrackets" :key="br" @click="toggleBr(br)" 
-                        :class="filters.brs.includes(br) ? 'bg-cyan-500 text-black border-cyan-400 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'" 
-                        class="border rounded text-xs transition cursor-pointer font-mono flex overflow-hidden h-7 items-stretch">
-                        <span class="flex-1 flex items-center justify-center border-r text-[11px]" :class="filters.brs.includes(br) ? 'border-cyan-600' : 'border-slate-900'">
-                            {{ br.toFixed(1) }}
-                        </span>
-                        <span class="w-7 flex items-center justify-center text-[10px] font-bold" :class="filters.brs.includes(br) ? 'bg-cyan-600/30 text-black' : 'bg-slate-900/40 text-slate-500'">
-                            {{ brCounters[br] || 0 }}
-                        </span>
-                    </button>
-                </div>
-            </div>
-
-            <div v-if="filters.mode !== 'tournament'">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Класс техники</label>
-                <div class="flex bg-slate-950 p-1 border border-slate-800 rounded-lg">
-                    <button @click="filters.type = 'all'" :class="filters.type === 'all' ? 'bg-slate-900 text-cyan-400 font-bold' : 'text-slate-500'" class="flex-1 py-1 rounded text-[11px] transition cursor-pointer text-center">
-                        Все <span class="text-[9px] opacity-50 font-mono">({{ typeCounters.all }})</span>
-                    </button>
-                    <button @click="filters.type = 'tank'" :class="filters.type === 'tank' ? 'bg-slate-900 text-cyan-400 font-bold' : 'text-slate-500'" class="flex-1 py-1 rounded text-[11px] transition cursor-pointer text-center">
-                        Танки <span class="text-[9px] opacity-60 font-mono">({{ typeCounters.tank }})</span>
-                    </button>
-                    <button @click="filters.type = 'air'" :class="filters.type === 'air' ? 'bg-slate-900 text-cyan-400 font-bold' : 'text-slate-500'" class="flex-1 py-1 rounded text-[11px] transition cursor-pointer text-center">
-                        Летка <span class="text-[9px] opacity-60 font-mono">({{ typeCounters.air }})</span>
-                    </button>
-                </div>
-            </div>
-
-            <div>
-                <div class="flex justify-between items-center mb-2">
-                    <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Нации</label>
-                    <button @click="resetNations" class="text-[10px] text-cyan-500 hover:underline cursor-pointer">Сбросить</button>
-                </div>
-                <div class="space-y-1 max-h-44 overflow-y-auto pr-1 border border-slate-900 p-1.5 rounded-lg bg-slate-950/40 divide-y divide-slate-900/30">
-                    <label v-for="(label, key) in nationsMap" :key="key" class="flex items-center justify-between px-2 py-1 rounded hover:bg-slate-900 cursor-pointer text-xs transition">
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" v-model="filters.nations" :value="key" class="rounded border-slate-800 text-cyan-500 focus:ring-0 bg-slate-900">
-                            <span class="text-slate-400">{{ label }}</span>
+                <!-- НАСТРОЙКИ ДЛЯ РЕЖИМА: СКВАД ТРБ -->
+                <div v-if="filters.mode === 'squad'" class="flex flex-col gap-3.5 bg-slate-900/30 border border-slate-800/80 rounded-xl p-3.5">
+                    <!-- Верхняя планка БР -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-[10px] font-black uppercase tracking-wider text-cyan-400">Верхняя планка БР:</span>
+                            <span class="text-xs font-mono font-black bg-cyan-950 border border-cyan-800 text-cyan-300 px-2 py-0.5 rounded">
+                                {{ squadTargetBr.toFixed(1) }}
+                            </span>
                         </div>
-                        <span class="text-[10px] font-mono text-slate-600 shrink-0">
-                            <span class="text-amber-500/80 font-bold">{{ nationCounters[key]?.owned || 0 }}</span>
-                            <span class="opacity-40 font-sans mx-0.5">\</span>
-                            <span class="text-emerald-400 font-bold">{{ nationCounters[key]?.spaded || 0 }}</span>
-                        </span>
-                    </label>
+                        <div class="text-[9px] font-mono text-slate-400 mb-2 flex items-center justify-between">
+                            <span>Вилка сетапа (-1.0):</span>
+                            <span class="text-slate-300 font-bold">[{{ squadMinBr.toFixed(1) }} — {{ squadTargetBr.toFixed(1) }}]</span>
+                        </div>
+                        
+                        <!-- Быстрые кнопки популярных БР -->
+                        <div class="grid grid-cols-4 gap-1">
+                            <button 
+                                v-for="br in popularSquadBrs" 
+                                :key="br" 
+                                @click="squadTargetBr = br"
+                                :class="squadTargetBr === br ? 'bg-cyan-500 text-black font-black border-cyan-400' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'"
+                                class="border rounded text-[11px] font-mono py-1 transition cursor-pointer text-center"
+                            >
+                                {{ br.toFixed(1) }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Выбор нации для Сквада -->
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Нация сетапа</label>
+                        <select v-model="squadNation" class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 font-medium outline-none cursor-pointer">
+                            <option value="all">🌐 Все нации (Матрица готовности)</option>
+                            <option v-for="(label, key) in nationsMap" :key="key" :value="key">
+                                {{ nationsDecorated[key] || label }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Правило сетапа -->
+                    <div class="bg-slate-950/70 border border-slate-800/80 rounded-lg p-2.5 text-[10px] text-slate-400 flex flex-col gap-1 leading-relaxed">
+                        <div class="font-bold text-slate-300 flex items-center gap-1">
+                            <span>🎯 Правило подбора ТРБ:</span>
+                        </div>
+                        <div>• <strong>2 основных танка</strong> (ОБТ / Тяж / САУ)</div>
+                        <div>• <strong>1 ЗСУ / Зенитка</strong> (ПВО прикрытие)</div>
+                        <div>• <strong>1 самолет</strong> (Штурмовик / Истребитель с ТРБ БР)</div>
+                    </div>
                 </div>
-            </div>
+
+                <!-- НАСТРОЙКИ ДЛЯ РЕЖИМОВ СРБ И МУЛЬТИ -->
+                <div v-else class="flex flex-col gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Поиск по названию техники</label>
+                        <input type="text" v-model="filters.search" placeholder="Т-34, Leo, Spitfire..." class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-700 outline-none transition">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Границы БР недель</label>
+                            <button @click="resetBrs" class="text-[10px] text-cyan-500 hover:underline cursor-pointer">Сбросить</button>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1">
+                            <button v-for="br in brBrackets" :key="br" @click="toggleBr(br)" 
+                                :class="filters.brs.includes(br) ? 'bg-cyan-500 text-black border-cyan-400 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'" 
+                                class="border rounded text-xs transition cursor-pointer font-mono flex overflow-hidden h-7 items-stretch">
+                                <span class="flex-1 flex items-center justify-center border-r text-[11px]" :class="filters.brs.includes(br) ? 'border-cyan-600' : 'border-slate-900'">
+                                    {{ br.toFixed(1) }}
+                                </span>
+                                <span class="w-7 flex items-center justify-center text-[10px] font-bold" :class="filters.brs.includes(br) ? 'bg-cyan-600/30 text-black' : 'bg-slate-900/40 text-slate-500'">
+                                    {{ brCounters[br] || 0 }}
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Класс техники</label>
+                        <div class="flex bg-slate-950 p-1 border border-slate-800 rounded-lg">
+                            <button @click="filters.type = 'all'" :class="filters.type === 'all' ? 'bg-slate-900 text-cyan-400 font-bold' : 'text-slate-500'" class="flex-1 py-1 rounded text-[11px] transition cursor-pointer text-center">
+                                Все <span class="text-[9px] opacity-50 font-mono">({{ typeCounters.all }})</span>
+                            </button>
+                            <button @click="filters.type = 'tank'" :class="filters.type === 'tank' ? 'bg-slate-900 text-cyan-400 font-bold' : 'text-slate-500'" class="flex-1 py-1 rounded text-[11px] transition cursor-pointer text-center">
+                                Танки <span class="text-[9px] opacity-60 font-mono">({{ typeCounters.tank }})</span>
+                            </button>
+                            <button @click="filters.type = 'air'" :class="filters.type === 'air' ? 'bg-slate-900 text-cyan-400 font-bold' : 'text-slate-500'" class="flex-1 py-1 rounded text-[11px] transition cursor-pointer text-center">
+                                Летка <span class="text-[9px] opacity-60 font-mono">({{ typeCounters.air }})</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Нации</label>
+                            <button @click="resetNations" class="text-[10px] text-cyan-500 hover:underline cursor-pointer">Сбросить</button>
+                        </div>
+                        <div class="space-y-1 max-h-44 overflow-y-auto pr-1 border border-slate-900 p-1.5 rounded-lg bg-slate-950/40 divide-y divide-slate-900/30">
+                            <label v-for="(label, key) in nationsMap" :key="key" class="flex items-center justify-between px-2 py-1 rounded hover:bg-slate-900 cursor-pointer text-xs transition">
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" v-model="filters.nations" :value="key" class="rounded border-slate-800 text-cyan-500 focus:ring-0 bg-slate-900">
+                                    <span class="text-slate-400">{{ label }}</span>
+                                </div>
+                                <span class="text-[10px] font-mono text-slate-600 shrink-0">
+                                    <span class="text-amber-500/80 font-bold">{{ nationCounters[key]?.owned || 0 }}</span>
+                                    <span class="opacity-40 font-sans mx-0.5">\</span>
+                                    <span class="text-emerald-400 font-bold">{{ nationCounters[key]?.spaded || 0 }}</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- ======================================================== -->
+            <!-- БЛОК УПРАВЛЕНИЯ: РАЗДЕЛ ТУРНИРЫ TSS                     -->
+            <!-- ======================================================== -->
+            <template v-else-if="activeMainTab === 'tournaments'">
+                <div class="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3.5 flex flex-col gap-3.5">
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-amber-500 mb-1.5">Категория турнира</label>
+                        <div class="grid grid-cols-2 gap-1 bg-slate-950 p-1 border border-slate-900 rounded-lg">
+                            <button @click="filters.tourType = 'tank'" :class="filters.tourType === 'tank' ? 'bg-amber-500 text-black font-bold' : 'text-slate-400'" class="py-1 rounded text-[10px] font-medium transition cursor-pointer">🪖 Танки</button>
+                            <button @click="filters.tourType = 'air'" :class="filters.tourType === 'air' ? 'bg-amber-500 text-black font-bold' : 'text-slate-400'" class="py-1 rounded text-[10px] font-medium transition cursor-pointer">✈️ Авиа</button>
+                            <button @click="filters.tourType = 'mixed'" :class="filters.tourType === 'mixed' ? 'bg-amber-500 text-black font-bold' : 'text-slate-400'" class="py-1 rounded text-[10px] font-medium transition cursor-pointer">⚔️ Смеш.</button>
+                            <button @click="filters.tourType = 'naval'" :class="filters.tourType === 'naval' ? 'bg-amber-500 text-black font-bold' : 'text-slate-400'" class="py-1 rounded text-[10px] font-medium transition cursor-pointer">⚓ Морские</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-amber-500 mb-1.5">Пресеты турниров ({{ availableTourPresets.length }})</label>
+                        <select v-model="filters.tourPresetId" class="w-full bg-slate-950 border border-slate-900 focus:border-amber-500 rounded-lg px-2 py-2 text-xs text-slate-200 font-mono font-medium outline-none cursor-pointer">
+                            <option value="" disabled>-- Выберите сетап --</option>
+                            <option v-for="preset in availableTourPresets" :key="preset.id" :value="preset.id">
+                                {{ preset.name }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div v-if="activePresetData" class="bg-slate-950/70 border border-slate-900 p-2.5 rounded-lg flex items-center justify-between text-[11px]">
+                        <span class="text-slate-500 font-medium">Формат команды:</span>
+                        <span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded font-bold font-mono">
+                            {{ activePresetData.teamFormat }}x{{ activePresetData.teamFormat }}
+                        </span>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Поиск техники в сетапе</label>
+                        <input type="text" v-model="tourSearchQuery" placeholder="Фильтр по названию..." class="w-full bg-slate-950 border border-slate-900 focus:border-amber-500 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 placeholder-slate-700 outline-none transition">
+                    </div>
+                </div>
+            </template>
         </aside>
 
+        <!-- ГЛАВНАЯ ОБЛАСТЬ КОНТЕНТА -->
         <main class="flex-1 bg-slate-950 p-6 flex flex-col min-w-0 overflow-hidden">
-            <div v-if="dbLoaded" class="grid grid-cols-4 gap-4 mb-5 shrink-0">
-                <div class="bg-slate-900/30 border border-slate-900 rounded-xl p-4 flex flex-col justify-between">
-                    <div class="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Доступно по критериям</div>
-                    <div class="text-xl font-black text-slate-300 mt-0.5 font-mono">
-                        {{ dashboardStats.totalOwned }} <span class="text-xs text-slate-600 font-medium font-sans">из</span> {{ dashboardStats.dbTotal }}
+            <!-- Плейсхолдер: если боец не выбран -->
+            <div v-if="!playerLoaded" class="flex-1 flex flex-col items-center justify-center border border-dashed border-slate-800 rounded-xl bg-slate-900/5 p-12 text-center">
+                <div class="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-cyan-400 text-lg font-bold mb-4">
+                    👤
+                </div>
+                <h3 class="text-slate-200 font-bold text-sm mb-1">Ожидание выбора профиля бойца</h3>
+                <p class="text-slate-500 text-xs max-w-sm mx-auto">
+                    Введите никнейм бойца в строку поиска в шапке сайта, чтобы рассчитать готовность сетапа для Сквада, СРБ или Турниров.
+                </p>
+            </div>
+
+            <template v-else>
+                <!-- ======================================================== -->
+                <!-- ЭКРАН 1: РЕЖИМ «СКВАД ТРБ» (ГЕНЕРАТОР ПО ВЕРХНЕЙ ПЛАНКЕ БР) -->
+                <!-- ======================================================== -->
+                <div v-if="activeMainTab === 'squadron' && filters.mode === 'squad'" class="flex-1 flex flex-col min-h-0 overflow-y-auto pr-1">
+                    
+                    <!-- Шапка режима Сквада -->
+                    <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 mb-5 flex flex-wrap items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-lg font-black">
+                                🤝
+                            </div>
+                            <div>
+                                <h2 class="text-sm font-black text-slate-200 flex items-center gap-2">
+                                    <span>Сетап ТРБ под БР {{ squadTargetBr.toFixed(1) }}</span>
+                                    <span class="bg-cyan-950 border border-cyan-800 text-cyan-300 text-[10px] font-mono px-2 py-0.5 rounded font-bold">
+                                        Вилка: {{ squadMinBr.toFixed(1) }} — {{ squadTargetBr.toFixed(1) }}
+                                    </span>
+                                </h2>
+                                <p class="text-[11px] text-slate-400 mt-0.5">
+                                    Автоматический подбор топовых машин: 2 танка + 1 ЗСУ + 1 самолет (с раздельным ТРБ БР авиации).
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Переключатель режима отображения: Все нации или одна -->
+                        <div class="flex items-center gap-2">
+                            <button 
+                                v-if="squadNation !== 'all'" 
+                                @click="squadNation = 'all'" 
+                                class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 font-medium"
+                            >
+                                <span>←</span>
+                                <span>Ко всем нациям</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ВИД А: СВОДНАЯ МАТРИЦА ВСЕХ НАЦИЙ (когда squadNation === 'all') -->
+                    <div v-if="squadNation === 'all'" class="flex flex-col gap-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">
+                                Готовность сетапов по всем нациям на БР {{ squadTargetBr.toFixed(1) }}:
+                            </span>
+                            <span class="text-[11px] text-slate-500">Кликните по нации для детальной настройки слотов</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+                            <div 
+                                v-for="nationSquad in squadAllNationsData" 
+                                :key="nationSquad.country"
+                                @click="squadNation = nationSquad.country"
+                                :class="nationSquad.isComplete ? (nationSquad.isAllSpaded ? 'border-emerald-500/40 bg-emerald-950/10 hover:border-emerald-400' : 'border-amber-500/40 bg-amber-950/10 hover:border-amber-400') : 'border-slate-800/80 bg-slate-900/20 hover:border-slate-700'"
+                                class="border rounded-2xl p-4 transition cursor-pointer flex flex-col justify-between gap-3 group"
+                            >
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-base">{{ nationsDecorated[nationSquad.country]?.split(' ')[0] || '🚩' }}</span>
+                                        <span class="text-xs font-black text-slate-200 group-hover:text-cyan-400 transition">
+                                            {{ nationsMap[nationSquad.country] || nationSquad.country }}
+                                        </span>
+                                    </div>
+                                    <span 
+                                        :class="nationSquad.isComplete ? (nationSquad.isAllSpaded ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400' : 'bg-amber-500/20 border-amber-500/40 text-amber-400') : 'bg-slate-900 border-slate-800 text-slate-500'" 
+                                        class="border px-2 py-0.5 rounded-full text-[10px] font-mono font-bold"
+                                    >
+                                        {{ nationSquad.slotsFilled }}/4 машин {{ nationSquad.isAllSpaded ? '♠' : '' }}
+                                    </span>
+                                </div>
+
+                                <!-- 4 мини-слота -->
+                                <div class="grid grid-cols-4 gap-1.5 font-mono text-[10px]">
+                                    <!-- Танк 1 -->
+                                    <div class="bg-slate-950/80 border border-slate-800/80 p-1.5 rounded-lg flex flex-col truncate" :title="nationSquad.tank1?.name || 'Нет танка #1'">
+                                        <span class="text-[8px] text-slate-500 font-bold uppercase truncate">🛡️ Т1</span>
+                                        <span class="text-slate-200 font-medium truncate mt-0.5">{{ nationSquad.tank1 ? nationSquad.tank1.name : '—' }}</span>
+                                        <span v-if="nationSquad.tank1" :class="nationSquad.tank1.status === 2 ? 'text-emerald-400' : 'text-amber-400'" class="text-[9px] font-bold">
+                                            {{ nationSquad.tank1.br.toFixed(1) }} {{ nationSquad.tank1.status === 2 ? '♠' : '' }}
+                                        </span>
+                                    </div>
+
+                                    <!-- Танк 2 -->
+                                    <div class="bg-slate-950/80 border border-slate-800/80 p-1.5 rounded-lg flex flex-col truncate" :title="nationSquad.tank2?.name || 'Нет танка #2'">
+                                        <span class="text-[8px] text-slate-500 font-bold uppercase truncate">🛡️ Т2</span>
+                                        <span class="text-slate-200 font-medium truncate mt-0.5">{{ nationSquad.tank2 ? nationSquad.tank2.name : '—' }}</span>
+                                        <span v-if="nationSquad.tank2" :class="nationSquad.tank2.status === 2 ? 'text-emerald-400' : 'text-amber-400'" class="text-[9px] font-bold">
+                                            {{ nationSquad.tank2.br.toFixed(1) }} {{ nationSquad.tank2.status === 2 ? '♠' : '' }}
+                                        </span>
+                                    </div>
+
+                                    <!-- ЗСУ -->
+                                    <div class="bg-slate-950/80 border border-slate-800/80 p-1.5 rounded-lg flex flex-col truncate" :title="nationSquad.spaa?.name || 'Нет ЗСУ'">
+                                        <span class="text-[8px] text-slate-500 font-bold uppercase truncate">🎯 ЗСУ</span>
+                                        <span class="text-slate-200 font-medium truncate mt-0.5">{{ nationSquad.spaa ? nationSquad.spaa.name : '—' }}</span>
+                                        <span v-if="nationSquad.spaa" :class="nationSquad.spaa.status === 2 ? 'text-emerald-400' : 'text-amber-400'" class="text-[9px] font-bold">
+                                            {{ nationSquad.spaa.br.toFixed(1) }} {{ nationSquad.spaa.status === 2 ? '♠' : '' }}
+                                        </span>
+                                    </div>
+
+                                    <!-- Самолет -->
+                                    <div class="bg-slate-950/80 border border-slate-800/80 p-1.5 rounded-lg flex flex-col truncate" :title="nationSquad.plane?.name || 'Нет самолета'">
+                                        <span class="text-[8px] text-slate-500 font-bold uppercase truncate">✈️ АВИА</span>
+                                        <span class="text-slate-200 font-medium truncate mt-0.5">{{ nationSquad.plane ? nationSquad.plane.name : '—' }}</span>
+                                        <span v-if="nationSquad.plane" :class="nationSquad.plane.status === 2 ? 'text-sky-400' : 'text-amber-400'" class="text-[9px] font-bold">
+                                            {{ nationSquad.plane.br.toFixed(1) }} {{ nationSquad.plane.status === 2 ? '♠' : '' }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ВИД Б: ДЕТАЛЬНЫЙ КОНСТРУКТОР СЕТАПА ВЫБРАННОЙ НАЦИИ -->
+                    <div v-else-if="activeSquadData" class="flex flex-col gap-6">
+                        
+                        <!-- 4 БОЛЬШИХ ИНТЕРАКТИВНЫХ СЛОТА ТРБ -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            
+                            <!-- СЛОТ 1: ТАНК #1 -->
+                            <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between border-t-4 border-t-cyan-500 shadow-lg">
+                                <div>
+                                    <div class="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                                        <span class="flex items-center gap-1.5 text-cyan-400">
+                                            <span>🛡️</span>
+                                            <span>Основной Танк #1</span>
+                                        </span>
+                                        <span v-if="activeSquadData.tank1" class="font-mono font-bold bg-slate-950 border border-slate-800 px-1.5 py-0.5 rounded text-slate-300">
+                                            БР {{ activeSquadData.tank1.br.toFixed(1) }}
+                                        </span>
+                                    </div>
+
+                                    <div v-if="activeSquadData.tank1" class="my-2">
+                                        <div class="text-sm font-black text-slate-100 flex items-center gap-1.5">
+                                            <span v-if="activeSquadData.tank1.isPrem" class="text-amber-400 text-xs">★</span>
+                                            {{ activeSquadData.tank1.name }}
+                                        </div>
+                                        <div class="text-[10px] font-mono text-slate-500 mt-0.5">{{ activeSquadData.tank1.id }}</div>
+
+                                        <div class="mt-3">
+                                            <span v-if="activeSquadData.tank1.status === 2" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                ♠ В пиках (ТОП)
+                                            </span>
+                                            <span v-else-if="activeSquadData.tank1.status === 1" class="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                ✓ Открыт (Не топ)
+                                            </span>
+                                            <span v-else class="bg-rose-950/40 border border-rose-900/50 text-rose-400 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                🔒 Нужна прокачка
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div v-else class="my-4 py-4 text-center text-xs text-slate-600 bg-slate-950/60 rounded-xl border border-dashed border-slate-800">
+                                        ⚠️ Нет танка в вилке
+                                    </div>
+                                </div>
+
+                                <!-- Альтернативы на замену слота 1 -->
+                                <div v-if="activeSquadData.tank1Alternatives.length > 0" class="mt-4 pt-3 border-t border-slate-800/80">
+                                    <div class="text-[9px] font-bold uppercase text-slate-500 mb-1.5">Замена слота:</div>
+                                    <div class="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1">
+                                        <button 
+                                            v-for="alt in activeSquadData.tank1Alternatives" 
+                                            :key="alt.id" 
+                                            @click="overrideSlot(activeSquadData.country, 'tank1', alt.id)"
+                                            class="text-[9px] font-mono bg-slate-950 hover:bg-slate-800 border border-slate-800 px-1.5 py-0.5 rounded text-slate-400 hover:text-cyan-300 transition cursor-pointer truncate max-w-full"
+                                            :title="alt.name + ' (' + alt.br.toFixed(1) + ')'"
+                                        >
+                                            {{ alt.name }} ({{ alt.br.toFixed(1) }}) {{ alt.status === 2 ? '♠' : '' }}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- СЛОТ 2: ТАНК #2 -->
+                            <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between border-t-4 border-t-cyan-500 shadow-lg">
+                                <div>
+                                    <div class="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                                        <span class="flex items-center gap-1.5 text-cyan-400">
+                                            <span>🛡️</span>
+                                            <span>Основной Танк #2</span>
+                                        </span>
+                                        <span v-if="activeSquadData.tank2" class="font-mono font-bold bg-slate-950 border border-slate-800 px-1.5 py-0.5 rounded text-slate-300">
+                                            БР {{ activeSquadData.tank2.br.toFixed(1) }}
+                                        </span>
+                                    </div>
+
+                                    <div v-if="activeSquadData.tank2" class="my-2">
+                                        <div class="text-sm font-black text-slate-100 flex items-center gap-1.5">
+                                            <span v-if="activeSquadData.tank2.isPrem" class="text-amber-400 text-xs">★</span>
+                                            {{ activeSquadData.tank2.name }}
+                                        </div>
+                                        <div class="text-[10px] font-mono text-slate-500 mt-0.5">{{ activeSquadData.tank2.id }}</div>
+
+                                        <div class="mt-3">
+                                            <span v-if="activeSquadData.tank2.status === 2" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                ♠ В пиках (ТОП)
+                                            </span>
+                                            <span v-else-if="activeSquadData.tank2.status === 1" class="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                ✓ Открыт (Не топ)
+                                            </span>
+                                            <span v-else class="bg-rose-950/40 border border-rose-900/50 text-rose-400 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                🔒 Нужна прокачка
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div v-else class="my-4 py-4 text-center text-xs text-slate-600 bg-slate-950/60 rounded-xl border border-dashed border-slate-800">
+                                        ⚠️ Нет второго танка в вилке
+                                    </div>
+                                </div>
+
+                                <!-- Альтернативы на замену слота 2 -->
+                                <div v-if="activeSquadData.tank2Alternatives.length > 0" class="mt-4 pt-3 border-t border-slate-800/80">
+                                    <div class="text-[9px] font-bold uppercase text-slate-500 mb-1.5">Замена слота:</div>
+                                    <div class="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1">
+                                        <button 
+                                            v-for="alt in activeSquadData.tank2Alternatives" 
+                                            :key="alt.id" 
+                                            @click="overrideSlot(activeSquadData.country, 'tank2', alt.id)"
+                                            class="text-[9px] font-mono bg-slate-950 hover:bg-slate-800 border border-slate-800 px-1.5 py-0.5 rounded text-slate-400 hover:text-cyan-300 transition cursor-pointer truncate max-w-full"
+                                            :title="alt.name + ' (' + alt.br.toFixed(1) + ')'"
+                                        >
+                                            {{ alt.name }} ({{ alt.br.toFixed(1) }}) {{ alt.status === 2 ? '♠' : '' }}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- СЛОТ 3: ЗСУ / ПВО -->
+                            <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between border-t-4 border-t-amber-500 shadow-lg">
+                                <div>
+                                    <div class="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                                        <span class="flex items-center gap-1.5 text-amber-400">
+                                            <span>🎯</span>
+                                            <span>ЗСУ / ПВО</span>
+                                        </span>
+                                        <span v-if="activeSquadData.spaa" class="font-mono font-bold bg-slate-950 border border-slate-800 px-1.5 py-0.5 rounded" :class="activeSquadData.spaa.isUnderBr ? 'text-amber-400 border-amber-900' : 'text-slate-300'">
+                                            БР {{ activeSquadData.spaa.br.toFixed(1) }}
+                                        </span>
+                                    </div>
+
+                                    <div v-if="activeSquadData.spaa" class="my-2">
+                                        <div class="text-sm font-black text-slate-100 flex items-center gap-1.5">
+                                            <span v-if="activeSquadData.spaa.isPrem" class="text-amber-400 text-xs">★</span>
+                                            {{ activeSquadData.spaa.name }}
+                                        </div>
+                                        <div class="text-[10px] font-mono text-slate-500 mt-0.5 flex items-center gap-1">
+                                            <span>{{ activeSquadData.spaa.id }}</span>
+                                            <span v-if="activeSquadData.spaa.isUnderBr" class="text-[9px] text-amber-400 font-bold bg-amber-500/10 px-1 rounded">Ниже вилки</span>
+                                        </div>
+
+                                        <div class="mt-3">
+                                            <span v-if="activeSquadData.spaa.status === 2" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                ♠ В пиках (ТОП)
+                                            </span>
+                                            <span v-else-if="activeSquadData.spaa.status === 1" class="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                ✓ Открыта (Не топ)
+                                            </span>
+                                            <span v-else class="bg-rose-950/40 border border-rose-900/50 text-rose-400 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                🔒 Нужна прокачка
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div v-else class="my-4 py-4 text-center text-xs text-amber-500/80 bg-amber-500/5 rounded-xl border border-dashed border-amber-500/20">
+                                        ⚠️ Нет ЗСУ в нации
+                                    </div>
+                                </div>
+
+                                <!-- Альтернативы на замену ЗСУ -->
+                                <div v-if="activeSquadData.spaaAlternatives.length > 0" class="mt-4 pt-3 border-t border-slate-800/80">
+                                    <div class="text-[9px] font-bold uppercase text-slate-500 mb-1.5">Замена ЗСУ:</div>
+                                    <div class="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1">
+                                        <button 
+                                            v-for="alt in activeSquadData.spaaAlternatives" 
+                                            :key="alt.id" 
+                                            @click="overrideSlot(activeSquadData.country, 'spaa', alt.id)"
+                                            class="text-[9px] font-mono bg-slate-950 hover:bg-slate-800 border border-slate-800 px-1.5 py-0.5 rounded text-slate-400 hover:text-amber-300 transition cursor-pointer truncate max-w-full"
+                                            :title="alt.name + ' (' + alt.br.toFixed(1) + ')'"
+                                        >
+                                            {{ alt.name }} ({{ alt.br.toFixed(1) }}) {{ alt.status === 2 ? '♠' : '' }}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- СЛОТ 4: АВИАЦИЯ (1 САМОЛЕТ) -->
+                            <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between border-t-4 border-t-sky-400 shadow-lg">
+                                <div>
+                                    <div class="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                                        <span class="flex items-center gap-1.5 text-sky-400">
+                                            <span>✈️</span>
+                                            <span>Авиация (1 самолет ТРБ)</span>
+                                        </span>
+                                        <span v-if="activeSquadData.plane" class="font-mono font-bold bg-slate-950 border border-slate-800 px-1.5 py-0.5 rounded text-sky-300">
+                                            ТРБ {{ activeSquadData.plane.br.toFixed(1) }}
+                                        </span>
+                                    </div>
+
+                                    <div v-if="activeSquadData.plane" class="my-2">
+                                        <div class="text-sm font-black text-slate-100 flex items-center gap-1.5">
+                                            <span v-if="activeSquadData.plane.isPrem" class="text-amber-400 text-xs">★</span>
+                                            {{ activeSquadData.plane.name }}
+                                        </div>
+                                        <div class="text-[10px] font-mono text-slate-500 mt-0.5 flex items-center gap-1">
+                                            <span>{{ activeSquadData.plane.id }}</span>
+                                            <span v-if="activeSquadData.plane.isDifferentTankBr" class="text-[9px] text-sky-400 font-bold bg-sky-500/10 px-1 rounded">ТРБ БР</span>
+                                        </div>
+
+                                        <div class="mt-3">
+                                            <span v-if="activeSquadData.plane.status === 2" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                ♠ В пиках (ТОП)
+                                            </span>
+                                            <span v-else-if="activeSquadData.plane.status === 1" class="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                ✓ Открыт (Не топ)
+                                            </span>
+                                            <span v-else class="bg-rose-950/40 border border-rose-900/50 text-rose-400 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                🔒 Нужна прокачка
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div v-else class="my-4 py-4 text-center text-xs text-slate-600 bg-slate-950/60 rounded-xl border border-dashed border-slate-800">
+                                        ⚠️ Нет самолета в вилке
+                                    </div>
+                                </div>
+
+                                <!-- Альтернативы на замену самолета -->
+                                <div v-if="activeSquadData.planeAlternatives.length > 0" class="mt-4 pt-3 border-t border-slate-800/80">
+                                    <div class="text-[9px] font-bold uppercase text-slate-500 mb-1.5">Замена самолета:</div>
+                                    <div class="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1">
+                                        <button 
+                                            v-for="alt in activeSquadData.planeAlternatives" 
+                                            :key="alt.id" 
+                                            @click="overrideSlot(activeSquadData.country, 'plane', alt.id)"
+                                            class="text-[9px] font-mono bg-slate-950 hover:bg-slate-800 border border-slate-800 px-1.5 py-0.5 rounded text-slate-400 hover:text-sky-300 transition cursor-pointer truncate max-w-full"
+                                            :title="alt.name + ' (' + alt.br.toFixed(1) + ')'"
+                                        >
+                                            {{ alt.name }} ({{ alt.br.toFixed(1) }}) {{ alt.status === 2 ? '♠' : '' }}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- ПОЛНЫЙ ПУЛ ТЕХНИКИ В ВИЛКЕ БР ДЛЯ ВЫБРАННОЙ НАЦИИ -->
+                        <div class="border border-slate-800 rounded-2xl bg-slate-900/10 overflow-hidden flex flex-col">
+                            <div class="p-3.5 bg-slate-900/40 border-b border-slate-800 flex items-center justify-between">
+                                <span class="text-xs font-bold uppercase tracking-wider text-slate-300">
+                                    Весь резерв нации в диапазоне {{ squadMinBr.toFixed(1) }} — {{ squadTargetBr.toFixed(1) }} (всего: {{ activeSquadData.pool.length }})
+                                </span>
+                                <div class="flex gap-1 text-[10px]">
+                                    <button @click="squadPoolFilter = 'all'" :class="squadPoolFilter === 'all' ? 'bg-cyan-500 text-black font-bold' : 'bg-slate-950 text-slate-400'" class="px-2.5 py-1 rounded transition cursor-pointer">
+                                        Все ({{ activeSquadData.pool.length }})
+                                    </button>
+                                    <button @click="squadPoolFilter = 'tanks'" :class="squadPoolFilter === 'tanks' ? 'bg-cyan-500 text-black font-bold' : 'bg-slate-950 text-slate-400'" class="px-2.5 py-1 rounded transition cursor-pointer">
+                                        Танки ({{ activeSquadData.allTanks.length }})
+                                    </button>
+                                    <button @click="squadPoolFilter = 'spaa'" :class="squadPoolFilter === 'spaa' ? 'bg-cyan-500 text-black font-bold' : 'bg-slate-950 text-slate-400'" class="px-2.5 py-1 rounded transition cursor-pointer">
+                                        ЗСУ ({{ activeSquadData.allSpaa.length }})
+                                    </button>
+                                    <button @click="squadPoolFilter = 'air'" :class="squadPoolFilter === 'air' ? 'bg-cyan-500 text-black font-bold' : 'bg-slate-950 text-slate-400'" class="px-2.5 py-1 rounded transition cursor-pointer">
+                                        Авиация ({{ activeSquadData.allPlanes.length }})
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="max-h-80 overflow-y-auto">
+                                <table class="w-full text-left border-collapse text-xs">
+                                    <thead class="bg-slate-900 sticky top-0 z-10 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800 text-[10px]">
+                                        <tr>
+                                            <th class="p-2.5 pl-4">Машина</th>
+                                            <th class="p-2.5">Роль</th>
+                                            <th class="p-2.5 text-center">БР ТРБ</th>
+                                            <th class="p-2.5 text-center">Статус</th>
+                                            <th class="p-2.5 text-center">Слот в сетапе</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-900/60 font-mono text-slate-300">
+                                        <tr v-for="unit in filteredSquadPool" :key="unit.id" class="hover:bg-slate-900/20 transition">
+                                            <td class="p-2.5 pl-4 font-sans font-medium text-slate-200">
+                                                <span v-if="unit.isPrem" class="text-amber-400 mr-1">★</span>
+                                                {{ unit.name }}
+                                                <span class="block text-[10px] text-slate-600 font-mono">{{ unit.id }}</span>
+                                            </td>
+                                            <td class="p-2.5 font-sans text-slate-400">
+                                                {{ unit.roleTitle }}
+                                            </td>
+                                            <td class="p-2.5 text-center font-bold">
+                                                {{ unit.br.toFixed(1) }}
+                                            </td>
+                                            <td class="p-2.5 text-center font-sans">
+                                                <span v-if="unit.status === 2" class="text-emerald-400 font-bold text-[10px]">♠ В пиках</span>
+                                                <span v-else-if="unit.status === 1" class="text-amber-400 font-medium text-[10px]">✓ Открыта</span>
+                                                <span v-else class="text-rose-500 font-medium text-[10px]">🔒 Закрыта</span>
+                                            </td>
+                                            <td class="p-2.5 text-center">
+                                                <span v-if="unit.currentSlot" class="bg-cyan-950 border border-cyan-800 text-cyan-300 px-2 py-0.5 rounded text-[10px] font-bold font-sans">
+                                                    {{ unit.currentSlot }}
+                                                </span>
+                                                <span v-else class="text-slate-600 text-[10px]">—</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
-                <div class="bg-slate-900/30 border border-slate-900 rounded-xl p-4 flex flex-col justify-between border-l-2 border-l-amber-500">
-                    <div class="text-[9px] font-bold uppercase text-amber-500 tracking-wider">Куплено / Открыто</div>
-                    <div class="text-xl font-black text-amber-400 mt-0.5 font-mono">{{ dashboardStats.totalOwned }}</div>
-                </div>
-                <div class="bg-slate-900/30 border border-slate-900 rounded-xl p-4 flex flex-col justify-between border-l-2 border-l-emerald-500">
-                    <div class="text-[9px] font-bold uppercase text-emerald-500 tracking-wider">Только в ТОПЕ (В Пиках)</div>
-                    <div class="text-xl font-black text-emerald-400 mt-0.5 font-mono">{{ dashboardStats.playerSpaded }}</div>
-                </div>
-                <div class="bg-slate-900/30 border border-slate-900 rounded-xl p-4 flex flex-col justify-between border-l-2 border-l-cyan-500">
-                    <div class="text-[9px] font-bold uppercase text-cyan-400 tracking-wider">Готовность Сетапа</div>
-                    <div class="text-xl font-black text-cyan-300 mt-0.5 font-mono">{{ dashboardStats.readiness }}%</div>
-                </div>
-            </div>
 
-            <div v-if="!playerLoaded" class="flex-1 flex flex-col items-center justify-center border border-dashed border-slate-800 rounded-xl bg-slate-900/5 p-12 text-center">
-                <div class="w-10 h-10 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-center text-cyan-500 text-sm font-bold mb-4">i</div>
-                <h3 class="text-slate-300 font-medium text-xs mb-1">Ожидание выбора профиля</h3>
-                <p class="text-slate-600 text-[11px] max-w-sm mx-auto">Введите никнейм бойца в строку поиска в шапке сайта для мгновенной загрузки его сетапов.</p>
-            </div>
+                <!-- ======================================================== -->
+                <!-- ЭКРАН 2: РЕЖИМ СРБ / МУЛЬТИ (КЛАССИЧЕСКИЙ ДАШБОРД)       -->
+                <!-- ======================================================== -->
+                <div v-else-if="activeMainTab === 'squadron'" class="flex-1 flex flex-col min-h-0">
+                    <!-- KPI карточки -->
+                    <div class="grid grid-cols-4 gap-4 mb-4 shrink-0">
+                        <div class="bg-slate-900/30 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
+                            <div class="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Доступно по критериям</div>
+                            <div class="text-lg font-black text-slate-300 mt-0.5 font-mono">
+                                {{ dashboardStats.totalOwned }} <span class="text-xs text-slate-600 font-sans">из</span> {{ dashboardStats.dbTotal }}
+                            </div>
+                        </div>
+                        <div class="bg-slate-900/30 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between border-l-2 border-l-amber-500">
+                            <div class="text-[9px] font-bold uppercase text-amber-500 tracking-wider">Куплено / Открыто</div>
+                            <div class="text-lg font-black text-amber-400 mt-0.5 font-mono">{{ dashboardStats.totalOwned }}</div>
+                        </div>
+                        <div class="bg-slate-900/30 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between border-l-2 border-l-emerald-500">
+                            <div class="text-[9px] font-bold uppercase text-emerald-500 tracking-wider">Только в ТОПЕ (В Пиках)</div>
+                            <div class="text-lg font-black text-emerald-400 mt-0.5 font-mono">{{ dashboardStats.playerSpaded }}</div>
+                        </div>
+                        <div class="bg-slate-900/30 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between border-l-2 border-l-cyan-500">
+                            <div class="text-[9px] font-bold uppercase text-cyan-400 tracking-wider">Готовность Сетапа</div>
+                            <div class="text-lg font-black text-cyan-300 mt-0.5 font-mono">{{ dashboardStats.readiness }}%</div>
+                        </div>
+                    </div>
 
-            <div v-else class="flex-1 flex flex-col min-h-0">
-                <div v-if="isFallbackActive" class="mb-3 px-4 py-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[11px] text-amber-400 flex items-center justify-between">
-                    <span>⚠️ <strong>Режим планирования:</strong> У этого бойца нет открытой техники под выбранные критерии. Выведены закрытые машины.</span>
+                    <div v-if="isFallbackActive" class="mb-3 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-400">
+                        ⚠️ <strong>Режим планирования:</strong> У бойца нет открытой техники под выбранные критерии. Выведены закрытые машины.
+                    </div>
+
+                    <!-- Таблица СРБ / Мульти -->
+                    <div class="flex-1 overflow-auto border border-slate-800 rounded-xl bg-slate-900/10">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead class="bg-slate-900 sticky top-0 z-10 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800 text-[10px]">
+                                <tr>
+                                    <th class="p-3 pl-4">Название машины</th>
+                                    <th class="p-3">Тип</th>
+                                    <th class="p-3">Нация</th>
+                                    <th class="p-3 text-center">Игровой БР</th>
+                                    <th class="p-3 text-center">Порог СРБ</th>
+                                    <th class="p-3 text-center">Статус Модулей</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-900/40 text-slate-300 font-mono">
+                                <tr v-for="item in currentTableData" :key="item.id" :class="item.status === 0 ? 'opacity-35 bg-slate-950/40' : 'hover:bg-slate-900/20'" class="transition">
+                                    <td class="p-2.5 pl-4 font-sans font-medium text-slate-200">
+                                        <span v-if="item.isPrem" class="text-amber-400 mr-1">★</span>
+                                        {{ item.name }}
+                                        <span class="block text-[10px] text-slate-600 font-mono mt-0.5">{{ item.id }}</span>
+                                    </td>
+                                    <td class="p-2.5 font-sans">
+                                        <span :class="item.type === 'Летка' ? 'text-sky-400' : 'text-slate-400'">{{ item.type }}</span>
+                                    </td>
+                                    <td class="p-2.5 text-slate-400 font-sans">{{ nationsMap[item.country] || item.country }}</td>
+                                    <td class="p-2.5 text-center font-semibold">{{ item.br.toFixed(1) }}</td>
+                                    <td class="p-2.5 text-center">
+                                        <span class="bg-slate-950 border border-slate-800 px-1.5 py-0.5 rounded text-slate-400 font-medium">
+                                            {{ item.bracket.toFixed(1) }}
+                                        </span>
+                                    </td>
+                                    <td class="p-2.5 text-center font-sans">
+                                        <span v-if="item.status === 2" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide">
+                                            ♠ Пиковая
+                                        </span>
+                                        <span v-else-if="item.status === 1" class="bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide">
+                                            <span v-if="filters.mode === 'squadron'" title="Внимание! Не пиковая техника опасна для СРБ">⚠️ Не топ</span>
+                                            <span v-else>✓ Открыта</span>
+                                        </span>
+                                        <span v-else class="bg-rose-950/40 border border-rose-900/50 text-rose-400 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide">
+                                            🔒 Нет в наличии
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
-                <div class="flex-1 overflow-auto border border-slate-900 rounded-xl bg-slate-900/10">
-                    <table class="w-full text-left border-collapse text-xs">
-                        <thead class="bg-slate-900 sticky top-0 z-10 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800 text-[10px]">
-                            <tr>
-                                <th class="p-3 pl-4">Название машины</th>
-                                <th class="p-3">Тип</th>
-                                <th class="p-3">Нация</th>
-                                <th class="p-3 text-center">Игровой БР</th>
-                                <th class="p-3 text-center">Порог СРБ</th>
-                                <th class="p-3 text-center">Статус Модулей</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-900/40 text-slate-300 font-mono">
-                            <tr v-for="item in currentTableData" :key="item.id" :class="item.status === 0 ? 'opacity-35 bg-slate-950/40' : 'hover:bg-slate-900/20'" class="transition">
-                                <td class="p-3 pl-4 font-sans font-medium text-slate-200">
-                                    <span v-if="item.isPrem" class="text-amber-400 mr-1">★</span>
-                                    {{ item.name }}
-                                    <span class="block text-[10px] text-slate-600 font-mono mt-0.5">{{ item.id }}</span>
-                                </td>
-                                <td class="p-3 font-sans">
-                                    <span :class="item.type === 'Летка' ? 'text-sky-400' : 'text-slate-400'">{{ item.type }}</span>
-                                </td>
-                                <td class="p-3 text-slate-400 font-sans">{{ nationsMap[item.country] || item.country }}</td>
-                                <td class="p-3 text-center font-semibold">{{ item.br.toFixed(1) }}</td>
-                                <td class="p-3 text-center">
-                                    <span class="bg-slate-950 border border-slate-800 px-1.5 py-0.5 rounded text-slate-400 font-medium">
-                                        {{ item.bracket.toFixed(1) }}
+                <!-- ======================================================== -->
+                <!-- ЭКРАН 3: ИЗОЛИРОВАННЫЙ ХАБ «ТУРНИРЫ TSS»                  -->
+                <!-- ======================================================== -->
+                <div v-else-if="activeMainTab === 'tournaments'" class="flex-1 flex flex-col min-h-0">
+                    <div v-if="!activePresetData" class="flex-1 flex flex-col items-center justify-center p-12 text-center">
+                        <div class="text-3xl mb-3">🏆</div>
+                        <h3 class="text-slate-200 font-bold text-sm mb-1">Выберите сетап турнира</h3>
+                        <p class="text-slate-500 text-xs">Выберите категорию и регламент турнира в боковой панели слева.</p>
+                    </div>
+
+                    <template v-else>
+                        <!-- Заголовок турнира -->
+                        <div class="bg-slate-900/40 border border-amber-500/20 rounded-2xl p-4 mb-4 flex flex-wrap items-center justify-between gap-4">
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-xs bg-amber-500/20 border border-amber-500/40 text-amber-400 px-2 py-0.5 rounded font-mono font-bold">
+                                        Формат {{ activePresetData.teamFormat }}x{{ activePresetData.teamFormat }}
                                     </span>
-                                </td>
-                                <td class="p-3 text-center font-sans">
-                                    <span v-if="item.status === 2" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide">
-                                        ♠ Пиковая
+                                    <span class="text-xs bg-slate-900 border border-slate-800 text-slate-300 px-2 py-0.5 rounded capitalize font-medium">
+                                        Категория: {{ activePresetData.type }}
                                     </span>
-                                    <span v-else-if="item.status === 1" class="bg-amber-500/10 border border-emerald-500/30 text-amber-400 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide">
-                                        <span v-if="filters.mode === 'squadron'" title="Внимание! Не пиковая техника опасна для СРБ">⚠️ Не топ</span>
-                                        <span v-else>✓ Открыта</span>
-                                    </span>
-                                    <span v-else class="bg-rose-950/40 border border-rose-900/50 text-rose-400 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide">
-                                        🔒 Нет в наличии
-                                    </span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                                </div>
+                                <h2 class="text-sm font-black text-slate-100">{{ activePresetData.name }}</h2>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] font-mono text-slate-500">ID регламента: {{ activePresetData.id }}</span>
+                            </div>
+                        </div>
+
+                        <!-- KPI карточки турнира -->
+                        <div class="grid grid-cols-4 gap-4 mb-4 shrink-0">
+                            <div class="bg-slate-900/30 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
+                                <div class="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Всего в регламенте</div>
+                                <div class="text-lg font-black text-slate-300 mt-0.5 font-mono">{{ tournamentStats.totalAllowed }}</div>
+                            </div>
+                            <div class="bg-slate-900/30 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between border-l-2 border-l-amber-500">
+                                <div class="text-[9px] font-bold uppercase text-amber-500 tracking-wider">Доступно у бойца</div>
+                                <div class="text-lg font-black text-amber-400 mt-0.5 font-mono">{{ tournamentStats.playerOwned }}</div>
+                            </div>
+                            <div class="bg-slate-900/30 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between border-l-2 border-l-emerald-500">
+                                <div class="text-[9px] font-bold uppercase text-emerald-500 tracking-wider">В топе (в пиках)</div>
+                                <div class="text-lg font-black text-emerald-400 mt-0.5 font-mono">{{ tournamentStats.playerSpaded }}</div>
+                            </div>
+                            <div class="bg-slate-900/30 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between border-l-2 border-l-cyan-500">
+                                <div class="text-[9px] font-bold uppercase text-cyan-400 tracking-wider">Готовность к турниру</div>
+                                <div class="text-lg font-black text-cyan-300 mt-0.5 font-mono">{{ tournamentStats.readiness }}%</div>
+                            </div>
+                        </div>
+
+                        <!-- Таблица техники регламента турнира -->
+                        <div class="flex-1 overflow-auto border border-slate-800 rounded-xl bg-slate-900/10">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead class="bg-slate-900 sticky top-0 z-10 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800 text-[10px]">
+                                    <tr>
+                                        <th class="p-3 pl-4">Разрешенная машина</th>
+                                        <th class="p-3">Тип</th>
+                                        <th class="p-3">Нация</th>
+                                        <th class="p-3 text-center">Игровой БР</th>
+                                        <th class="p-3 text-center">Статус у бойца</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-900/40 text-slate-300 font-mono">
+                                    <tr v-for="unit in filteredTournamentUnits" :key="unit.id" :class="unit.status === 0 ? 'opacity-40 bg-slate-950/40' : 'hover:bg-slate-900/20'" class="transition">
+                                        <td class="p-2.5 pl-4 font-sans font-medium text-slate-200">
+                                            <span v-if="unit.isPrem" class="text-amber-400 mr-1">★</span>
+                                            {{ unit.name }}
+                                            <span class="block text-[10px] text-slate-600 font-mono mt-0.5">{{ unit.id }}</span>
+                                        </td>
+                                        <td class="p-2.5 font-sans">
+                                            <span :class="unit.type === 'Летка' ? 'text-sky-400' : 'text-slate-400'">{{ unit.type }}</span>
+                                        </td>
+                                        <td class="p-2.5 text-slate-400 font-sans">{{ nationsMap[unit.country] || unit.country }}</td>
+                                        <td class="p-2.5 text-center font-semibold">{{ unit.br.toFixed(1) }}</td>
+                                        <td class="p-2.5 text-center font-sans">
+                                            <span v-if="unit.status === 2" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide">
+                                                ♠ Пиковая (Готов)
+                                            </span>
+                                            <span v-else-if="unit.status === 1" class="bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide">
+                                                ✓ Открыта (Не топ)
+                                            </span>
+                                            <span v-else class="bg-rose-950/40 border border-rose-900/50 text-rose-400 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide">
+                                                🔒 Нет в наличии
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </template>
                 </div>
-            </div>
+            </template>
         </main>
     </div>
 </div>
@@ -287,6 +914,7 @@
 
     createApp({
         setup() {
+            // Данные
             const globalDb = ref({});
             const savedProfiles = ref({});
             const activePlayerUid = ref('');
@@ -296,17 +924,37 @@
             const isFallbackActive = ref(false);
 
             const cloudPlayers = ref([]);
-            const tournamentPresets = ref([]); // Загружается динамически из tournament_presets.json
+            const tournamentPresets = ref([]);
             const playerSearchQuery = ref('');
             const showSuggestions = ref(false);
             const isExtensionInstalled = ref(false);
 
+            // Главный переключатель разделов: 'squadron' (Сетапы и Сквад) | 'tournaments' (Турниры TSS)
+            const activeMainTab = ref('squadron');
+
+            // Режим Сквада ТРБ
+            const squadTargetBr = ref(10.0);
+            const squadNation = ref('all');
+            const squadCustomSlots = reactive({});
+            const squadPoolFilter = ref('all');
+            const popularSquadBrs = [11.7, 11.0, 10.7, 10.3, 10.0, 9.3, 9.0, 8.7, 8.3, 8.0, 7.7, 7.3, 7.0, 6.7, 6.0, 5.7, 5.3, 4.7, 4.0, 3.7];
+
+            // Поиск в турнирах
+            const tourSearchQuery = ref('');
+
+            // СРБ сетка БР
             const brBrackets = [14.3, 12.0, 11.0, 10.7, 10.0, 9.7, 9.0, 8.7, 8.3, 8.0, 7.7, 7.3, 7.0, 6.7, 6.3, 6.0, 5.7, 5.3, 5.0, 4.7, 4.3];
             
             const nationsMap = {
-                "country_usa": "США", "country_germany": "Германия", "country_ussr": "СССР",
+                "country_ussr": "СССР", "country_germany": "Германия", "country_usa": "США",
                 "country_britain": "Великобритания", "country_japan": "Япония", "country_china": "Китай",
                 "country_italy": "Италия", "country_france": "Франция", "country_sweden": "Швеция", "country_israel": "Израиль"
+            };
+
+            const nationsDecorated = {
+                "country_ussr": "🔴 СССР", "country_germany": "🦅 Германия", "country_usa": "⭐ США",
+                "country_britain": "🦁 Великобритания", "country_japan": "🌸 Япония", "country_china": "🐉 Китай",
+                "country_italy": "🏛️ Италия", "country_france": "⚜️ Франция", "country_sweden": "👑 Швеция", "country_israel": "✡️ Израиль"
             };
 
             const filters = reactive({
@@ -314,12 +962,18 @@
                 brs: [],
                 type: 'all',
                 nations: [],
-                mode: 'squadron',
+                mode: 'squad', // по умолчанию включаем новый режим Сквада
                 showHidden: false,      
                 tourType: 'tank',       
                 tourPresetId: ''        
             });
 
+            // Нижняя планка вилки БР (-1.0)
+            const squadMinBr = computed(() => {
+                return Math.max(1.0, Math.round((squadTargetBr.value - 1.0) * 10) / 10);
+            });
+
+            // Пресеты турниров
             const availableTourPresets = computed(() => {
                 return tournamentPresets.value.filter(p => p.type === filters.tourType);
             });
@@ -328,20 +982,247 @@
                 return tournamentPresets.value.find(p => p.id === filters.tourPresetId);
             });
 
-            const changeGlobalMode = (mode) => {
-                filters.mode = mode;
-                if (mode === 'tournament') {
-                    const firstAvailable = tournamentPresets.value.find(p => p.type === filters.tourType);
-                    filters.tourPresetId = firstAvailable ? firstAvailable.id : '';
-                }
-            };
-
             watch(() => filters.tourType, (newType) => {
                 const firstAvailable = tournamentPresets.value.find(p => p.type === newType);
                 filters.tourPresetId = firstAvailable ? firstAvailable.id : '';
             });
 
-            // Счетчики БР
+            // ========================================================
+            // АЛГОРИТМ ПОДБОРА СЕТАПА СКВАДА ТРБ
+            // ========================================================
+            const buildNationSquadData = (country) => {
+                const result = {
+                    country,
+                    tank1: null,
+                    tank2: null,
+                    spaa: null,
+                    plane: null,
+                    tank1Alternatives: [],
+                    tank2Alternatives: [],
+                    spaaAlternatives: [],
+                    planeAlternatives: [],
+                    allTanks: [],
+                    allSpaa: [],
+                    allPlanes: [],
+                    pool: [],
+                    slotsFilled: 0,
+                    spadedCount: 0,
+                    isComplete: false,
+                    isAllSpaded: false
+                };
+
+                if (!dbLoaded.value || !playerLoaded.value) return result;
+
+                const pStats = playerStats.value[country] || {};
+                const maxBr = squadTargetBr.value;
+                const minBr = squadMinBr.value;
+
+                const tanks = [];
+                const spaaList = [];
+                const underBrSpaa = [];
+                const planes = [];
+
+                // 1. Сканируем всю технику выбранной нации
+                for (const [vId, meta] of Object.entries(globalDb.value)) {
+                    if (meta.country !== country) continue;
+
+                    const status = pStats[vId] || 0;
+                    if (status === 0 && !filters.showHidden) continue;
+
+                    const isGround = ['tank', 'heavy_tank', 'wheeled_vehicle'].includes(meta.unitMoveType);
+                    const isAir = meta.unitMoveType === 'air';
+
+                    if (isGround) {
+                        const br = meta.battleRatingHistorical || 1.0;
+                        const isSpaa = meta.unitClass === 'exp_SPAA';
+
+                        const unitObj = {
+                            id: vId,
+                            name: meta.name,
+                            br: br,
+                            status: status,
+                            unitClass: meta.unitClass,
+                            isPrem: meta.isPrem || meta.isEvent || meta.isGift,
+                            roleTitle: isSpaa ? 'ЗСУ / ПВО' : (meta.unitClass === 'exp_heavy_tank' ? 'Тяжелый танк' : (meta.unitClass === 'exp_tank_destroyer' ? 'САУ' : 'Основной танк'))
+                        };
+
+                        if (br >= minBr && br <= maxBr) {
+                            if (isSpaa) spaaList.push(unitObj);
+                            else tanks.push(unitObj);
+                        } else if (isSpaa && br < minBr) {
+                            underBrSpaa.push({ ...unitObj, isUnderBr: true });
+                        }
+                    } else if (isAir) {
+                        // Танковый БР авиации для ТРБ
+                        const tankBr = meta.battleRatingTankHistorical || meta.battleRatingHistorical || 1.0;
+                        if (tankBr >= minBr && tankBr <= maxBr) {
+                            planes.push({
+                                id: vId,
+                                name: meta.name,
+                                br: tankBr,
+                                status: status,
+                                unitClass: meta.unitClass,
+                                isPrem: meta.isPrem || meta.isEvent || meta.isGift,
+                                isDifferentTankBr: !!meta.battleRatingTankHistorical && meta.battleRatingTankHistorical !== meta.battleRatingHistorical,
+                                roleTitle: meta.unitClass === 'exp_assault' ? 'Штурмовик' : (meta.unitClass === 'exp_bomber' ? 'Бомбардировщик' : 'Истребитель')
+                            });
+                        }
+                    }
+                }
+
+                // Сортировка: статус убывает (2=пик, 1=открыт, 0=закрыт), затем БР убывает
+                const sorter = (a, b) => (b.status - a.status) || (b.br - a.br);
+                tanks.sort(sorter);
+                spaaList.sort(sorter);
+                underBrSpaa.sort(sorter);
+                planes.sort(sorter);
+
+                result.allTanks = tanks;
+                result.allSpaa = spaaList;
+                result.allPlanes = planes;
+
+                // Ручные оверрайды слотов (если пользователь сам выбрал альтернативу)
+                const userOverrides = squadCustomSlots[country] || {};
+
+                // Слот Танк 1
+                if (userOverrides.tank1 && tanks.some(t => t.id === userOverrides.tank1)) {
+                    result.tank1 = tanks.find(t => t.id === userOverrides.tank1);
+                } else {
+                    result.tank1 = tanks[0] || null;
+                }
+
+                // Слот Танк 2 (отличающийся от Танка 1)
+                if (userOverrides.tank2 && tanks.some(t => t.id === userOverrides.tank2 && t.id !== result.tank1?.id)) {
+                    result.tank2 = tanks.find(t => t.id === userOverrides.tank2);
+                } else {
+                    result.tank2 = tanks.find(t => t.id !== result.tank1?.id) || null;
+                }
+
+                // Слот ЗСУ (если нет в вилке, подтягиваем лучшую ЗСУ ниже вилки)
+                if (userOverrides.spaa && (spaaList.concat(underBrSpaa)).some(s => s.id === userOverrides.spaa)) {
+                    result.spaa = (spaaList.concat(underBrSpaa)).find(s => s.id === userOverrides.spaa);
+                } else {
+                    result.spaa = spaaList[0] || underBrSpaa[0] || null;
+                }
+
+                // Слот Самолет (ровно 1)
+                if (userOverrides.plane && planes.some(p => p.id === userOverrides.plane)) {
+                    result.plane = planes.find(p => p.id === userOverrides.plane);
+                } else {
+                    result.plane = planes[0] || null;
+                }
+
+                // Формируем списки альтернатив
+                const activeIds = [result.tank1?.id, result.tank2?.id].filter(Boolean);
+                result.tank1Alternatives = tanks.filter(t => !activeIds.includes(t.id));
+                result.tank2Alternatives = tanks.filter(t => !activeIds.includes(t.id));
+                result.spaaAlternatives = spaaList.concat(underBrSpaa).filter(s => s.id !== result.spaa?.id);
+                result.planeAlternatives = planes.filter(p => p.id !== result.plane?.id);
+
+                // Подсчет готовности слотов
+                const slots = [result.tank1, result.tank2, result.spaa, result.plane];
+                result.slotsFilled = slots.filter(s => s && s.status > 0).length;
+                result.spadedCount = slots.filter(s => s && s.status === 2).length;
+
+                result.isComplete = result.slotsFilled === 4;
+                result.isAllSpaded = result.spadedCount === 4;
+
+                // Общий пул для таблицы
+                result.pool = [...tanks, ...spaaList, ...planes].map(u => {
+                    let currentSlot = '';
+                    if (u.id === result.tank1?.id) currentSlot = 'Танк #1';
+                    else if (u.id === result.tank2?.id) currentSlot = 'Танк #2';
+                    else if (u.id === result.spaa?.id) currentSlot = 'ЗСУ';
+                    else if (u.id === result.plane?.id) currentSlot = 'Авиация';
+                    return { ...u, currentSlot };
+                });
+
+                return result;
+            };
+
+            // Массив готовности по всем нациям для сводной сетки
+            const squadAllNationsData = computed(() => {
+                return Object.keys(nationsMap).map(cKey => buildNationSquadData(cKey));
+            });
+
+            // Данные активной выбранной нации в Скваде
+            const activeSquadData = computed(() => {
+                if (squadNation.value === 'all') return null;
+                return buildNationSquadData(squadNation.value);
+            });
+
+            // Фильтрованный пул техники в Скваде
+            const filteredSquadPool = computed(() => {
+                if (!activeSquadData.value) return [];
+                const pool = activeSquadData.value.pool;
+                if (squadPoolFilter.value === 'tanks') return activeSquadData.value.allTanks;
+                if (squadPoolFilter.value === 'spaa') return activeSquadData.value.allSpaa;
+                if (squadPoolFilter.value === 'air') return activeSquadData.value.allPlanes;
+                return pool;
+            });
+
+            const overrideSlot = (country, slotKey, vehicleId) => {
+                if (!squadCustomSlots[country]) {
+                    squadCustomSlots[country] = {};
+                }
+                squadCustomSlots[country][slotKey] = vehicleId;
+            };
+
+            // ========================================================
+            // ТУРНИРЫ TSS: ИЗОЛИРОВАННАЯ ТАБЛИЦА И KPI
+            // ========================================================
+            const filteredTournamentUnits = computed(() => {
+                if (!activePresetData.value || !dbLoaded.value) return [];
+                const list = [];
+                activePresetData.value.list.forEach(vId => {
+                    const meta = globalDb.value[vId];
+                    if (!meta) return;
+
+                    const status = playerStats.value[meta.country]?.[vId] || 0;
+                    if (tourSearchQuery.value && !meta.name.toLowerCase().includes(tourSearchQuery.value.toLowerCase()) && !vId.toLowerCase().includes(tourSearchQuery.value.toLowerCase())) {
+                        return;
+                    }
+
+                    list.push({
+                        id: vId,
+                        name: meta.name,
+                        type: meta.unitMoveType === 'air' ? 'Летка' : 'Танк',
+                        country: meta.country,
+                        br: meta.battleRatingHistorical || 1.0,
+                        isPrem: meta.isPrem || meta.isEvent || meta.isGift,
+                        status: status
+                    });
+                });
+                return list.sort((a, b) => b.br - a.br);
+            });
+
+            const tournamentStats = computed(() => {
+                let totalAllowed = 0;
+                let playerOwned = 0;
+                let playerSpaded = 0;
+
+                if (activePresetData.value && dbLoaded.value) {
+                    activePresetData.value.list.forEach(vId => {
+                        const meta = globalDb.value[vId];
+                        if (!meta) return;
+                        totalAllowed++;
+                        const status = playerStats.value[meta.country]?.[vId] || 0;
+                        if (status > 0) playerOwned++;
+                        if (status === 2) playerSpaded++;
+                    });
+                }
+
+                return {
+                    totalAllowed,
+                    playerOwned,
+                    playerSpaded,
+                    readiness: totalAllowed > 0 ? Math.round((playerSpaded / totalAllowed) * 100) : 0
+                };
+            });
+
+            // ========================================================
+            // ФАСЕТНЫЕ СЧЕТЧИКИ ДЛЯ СРБ / МУЛЬТИ
+            // ========================================================
             const brCounters = computed(() => {
                 const counts = {};
                 brBrackets.forEach(b => counts[b] = 0);
@@ -367,7 +1248,6 @@
                 return counts;
             });
 
-            // Счетчики типов
             const typeCounters = computed(() => {
                 const counts = { all: 0, tank: 0, air: 0 };
                 if (!playerLoaded.value || !dbLoaded.value) return counts;
@@ -393,7 +1273,6 @@
                 return counts;
             });
 
-            // Счетчики наций
             const nationCounters = computed(() => {
                 const counts = {};
                 Object.keys(nationsMap).forEach(k => counts[k] = { owned: 0, spaded: 0 });
@@ -401,7 +1280,6 @@
 
                 for (const [vId, meta] of Object.entries(globalDb.value)) {
                     if (!nationsMap[meta.country]) continue;
-                    if (filters.mode === 'tournament' && activePresetData.value && !activePresetData.value.list.includes(vId)) continue;
 
                     let status = playerStats.value[meta.country]?.[vId] || 0;
                     if (status === 0) continue;
@@ -413,11 +1291,9 @@
                     const bracket = matchBracket(realBr);
                     const isAir = meta.unitMoveType === 'air';
 
-                    if (filters.mode !== 'tournament') {
-                        if (filters.brs.length && !filters.brs.includes(bracket)) continue;
-                        if (filters.type === 'tank' && isAir) continue;
-                        if (filters.type === 'air' && !isAir) continue;
-                    }
+                    if (filters.brs.length && !filters.brs.includes(bracket)) continue;
+                    if (filters.type === 'tank' && isAir) continue;
+                    if (filters.type === 'air' && !isAir) continue;
 
                     counts[meta.country].owned++;
                     if (status === 2) counts[meta.country].spaded++;
@@ -425,6 +1301,7 @@
                 return counts;
             });
 
+            // Поиск бойцов
             watch(playerSearchQuery, (newVal) => {
                 if (!newVal) return;
                 const targetLower = newVal.trim().toLowerCase();
@@ -451,23 +1328,23 @@
                     }
                 });
 
-                // Загружаем реестр игроков
+                // Реестр игроков
                 fetch('players_list.json?t=' + Date.now())
                     .then(res => { if (res.ok) return res.json(); throw new Error(); })
                     .then(data => { cloudPlayers.value = Array.isArray(data) ? data : []; initHub(); })
                     .catch(() => { initHub(); });
 
-                // 🏆 ЗАГРУЖАЕМ ДИНАМИЧЕСКИЙ РЕЕСТР ПРЕСЕТОВ ТУРНИРОВ ИЗ ОБЛАКА
+                // Пресеты турниров
                 fetch('tournament_presets.json?t=' + Date.now())
                     .then(res => { if (res.ok) return res.json(); throw new Error(); })
                     .then(data => { tournamentPresets.value = Array.isArray(data) ? data : []; })
-                    .catch(() => { console.log("Файл реестра турниров еще не сформирован."); });
+                    .catch(() => { console.log("Файл турниров еще не загружен."); });
 
-                // Загружаем глобальную базу техники
+                // База техники
                 fetch('global_db.json')
                     .then(res => { if (!res.ok) throw new Error(); return res.json(); })
                     .then(data => { globalDb.value = data; dbLoaded.value = true; })
-                    .catch(() => { console.log("Блокировка CORS."); });
+                    .catch(() => { console.log("Блокировка CORS локального файла."); });
             });
 
             const initHub = () => {
@@ -557,12 +1434,10 @@
                 const bracket = matchBracket(realBr);
                 const isAir = meta.unitMoveType === 'air';
 
-                if (filters.mode !== 'tournament') {
-                    if (filters.search && !meta.name.toLowerCase().includes(filters.search.toLowerCase()) && !vId.toLowerCase().includes(filters.search.toLowerCase())) return null;
-                    if (filters.brs.length && !filters.brs.includes(bracket)) return null;
-                    if (filters.type === 'tank' && isAir) return null;
-                    if (filters.type === 'air' && !isAir) return null;
-                }
+                if (filters.search && !meta.name.toLowerCase().includes(filters.search.toLowerCase()) && !vId.toLowerCase().includes(filters.search.toLowerCase())) return null;
+                if (filters.brs.length && !filters.brs.includes(bracket)) return null;
+                if (filters.type === 'tank' && isAir) return null;
+                if (filters.type === 'air' && !isAir) return null;
                 if (filters.nations.length && !filters.nations.includes(meta.country)) return null;
 
                 return {
@@ -581,38 +1456,25 @@
                 let dbTotal = 0, playerOpen = 0, playerSpaded = 0;
                 if (!dbLoaded.value) return { dbTotal, playerOpen, playerSpaded, totalOwned: 0, readiness: 0 };
 
-                if (filters.mode === 'tournament' && activePresetData.value) {
-                    activePresetData.value.list.forEach(vId => {
-                        const meta = globalDb.value[vId];
-                        if (!meta || !nationsMap[meta.country]) return;
-                        if (filters.nations.length && !filters.nations.includes(meta.country)) return;
-
-                        dbTotal++;
-                        let status = playerLoaded.value && playerStats.value[meta.country]?.[vId] || 0;
-                        if (status === 1) playerOpen++;
-                        if (status === 2) playerSpaded++;
-                    });
-                } else {
-                    for (const [vId, meta] of Object.entries(globalDb.value)) {
-                        if (!nationsMap[meta.country]) continue;
-                        let realBr = meta.battleRatingHistorical || 1.0;
-                        if (meta.unitMoveType === 'air') {
-                            realBr = (filters.mode === 'squadron') ? (meta.battleRatingTankHistorical || meta.battleRatingHistorical || 1.0) : meta.battleRatingHistorical;
-                        }
-                        const bracket = matchBracket(realBr);
-                        const isAir = meta.unitMoveType === 'air';
-
-                        if (filters.search && !meta.name.toLowerCase().includes(filters.search.toLowerCase()) && !vId.toLowerCase().includes(filters.search.toLowerCase())) continue;
-                        if (filters.brs.length && !filters.brs.includes(bracket)) continue;
-                        if (filters.type === 'tank' && isAir) continue;
-                        if (filters.type === 'air' && !isAir) continue;
-                        if (filters.nations.length && !filters.nations.includes(meta.country)) continue;
-
-                        dbTotal++;
-                        let status = playerLoaded.value && playerStats.value[meta.country]?.[vId] || 0;
-                        if (status === 1) playerOpen++;
-                        if (status === 2) playerSpaded++;
+                for (const [vId, meta] of Object.entries(globalDb.value)) {
+                    if (!nationsMap[meta.country]) continue;
+                    let realBr = meta.battleRatingHistorical || 1.0;
+                    if (meta.unitMoveType === 'air') {
+                        realBr = (filters.mode === 'squadron') ? (meta.battleRatingTankHistorical || meta.battleRatingHistorical || 1.0) : meta.battleRatingHistorical;
                     }
+                    const bracket = matchBracket(realBr);
+                    const isAir = meta.unitMoveType === 'air';
+
+                    if (filters.search && !meta.name.toLowerCase().includes(filters.search.toLowerCase()) && !vId.toLowerCase().includes(filters.search.toLowerCase())) continue;
+                    if (filters.brs.length && !filters.brs.includes(bracket)) continue;
+                    if (filters.type === 'tank' && isAir) continue;
+                    if (filters.type === 'air' && !isAir) continue;
+                    if (filters.nations.length && !filters.nations.includes(meta.country)) continue;
+
+                    dbTotal++;
+                    let status = playerLoaded.value && playerStats.value[meta.country]?.[vId] || 0;
+                    if (status === 1) playerOpen++;
+                    if (status === 2) playerSpaded++;
                 }
                 const totalOwned = playerOpen + playerSpaded;
                 return { dbTotal, playerOpen, playerSpaded, totalOwned, readiness: totalOwned > 0 ? Math.round((playerSpaded / totalOwned) * 100) : 0 };
@@ -622,51 +1484,42 @@
                 if (!dbLoaded.value || !playerLoaded.value) return [];
                 let list = [];
 
-                if (filters.mode === 'tournament' && activePresetData.value) {
-                    activePresetData.value.list.forEach(vId => {
-                        const meta = globalDb.value[vId];
-                        if (meta) {
-                            const status = playerStats.value[meta.country]?.[vId] || 0;
-                            if (status === 0 && !filters.showHidden) return;
-                            const parsed = parseUnit(vId, meta, status);
+                for (const [countryKey, vehicles] of Object.entries(playerStats.value)) {
+                    for (const [vId, status] of Object.entries(vehicles)) {
+                        if (status > 0 && globalDb.value[vId]) {
+                            const parsed = parseUnit(vId, globalDb.value[vId], status);
                             if (parsed) list.push(parsed);
                         }
-                    });
-                } else {
-                    for (const [countryKey, vehicles] of Object.entries(playerStats.value)) {
-                        for (const [vId, status] of Object.entries(vehicles)) {
-                            if (status > 0 && globalDb.value[vId]) {
-                                const parsed = parseUnit(vId, globalDb.value[vId], status);
-                                if (parsed) list.push(parsed);
-                            }
-                        }
                     }
-                    if (filters.showHidden) {
-                        for (const [vId, meta] of Object.entries(globalDb.value)) {
-                            if (!nationsMap[meta.country]) continue;
-                            const status = playerStats.value[meta.country]?.[vId] || 0;
-                            if (status === 0) {
-                                const parsed = parseUnit(vId, meta, 0);
-                                if (parsed) list.push(parsed);
-                            }
-                        }
-                    }
-                    if (list.length === 0 && !filters.showHidden && (filters.search || filters.brs.length || filters.type !== 'all' || filters.nations.length)) {
-                        isFallbackActive.value = true;
-                        for (const [vId, meta] of Object.entries(globalDb.value)) {
-                            if (!(playerStats.value[meta.country]?.[vId] > 0)) {
-                                const parsed = parseUnit(vId, meta, 0);
-                                if (parsed) list.push(parsed);
-                            }
-                        }
-                    } else { isFallbackActive.value = false; }
                 }
+                if (filters.showHidden) {
+                    for (const [vId, meta] of Object.entries(globalDb.value)) {
+                        if (!nationsMap[meta.country]) continue;
+                        const status = playerStats.value[meta.country]?.[vId] || 0;
+                        if (status === 0) {
+                            const parsed = parseUnit(vId, meta, 0);
+                            if (parsed) list.push(parsed);
+                        }
+                    }
+                }
+                if (list.length === 0 && !filters.showHidden && (filters.search || filters.brs.length || filters.type !== 'all' || filters.nations.length)) {
+                    isFallbackActive.value = true;
+                    for (const [vId, meta] of Object.entries(globalDb.value)) {
+                        if (!(playerStats.value[meta.country]?.[vId] > 0)) {
+                            const parsed = parseUnit(vId, meta, 0);
+                            if (parsed) list.push(parsed);
+                        }
+                    }
+                } else { isFallbackActive.value = false; }
+
                 return list.sort((a, b) => b.br - a.br);
             });
 
             return {
-                filters, dbLoaded, playerLoaded, brBrackets, nationsMap, currentTableData, dashboardStats, isFallbackActive, playerBasics, activePlayerUid, cloudPlayers, playerSearchQuery, showSuggestions, filteredCloudPlayers, isExtensionInstalled, brCounters, typeCounters, nationCounters, availableTourPresets, activePresetData,
-                loadGlobalDbManual, toggleBr, resetBrs, resetNations, switchPlayer, selectPlayer, changeGlobalMode
+                filters, dbLoaded, playerLoaded, brBrackets, nationsMap, nationsDecorated, currentTableData, dashboardStats, isFallbackActive, playerBasics, activePlayerUid, cloudPlayers, playerSearchQuery, showSuggestions, filteredCloudPlayers, isExtensionInstalled, brCounters, typeCounters, nationCounters, availableTourPresets, activePresetData,
+                activeMainTab, squadTargetBr, squadMinBr, squadNation, popularSquadBrs, squadAllNationsData, activeSquadData, squadPoolFilter, filteredSquadPool, overrideSlot,
+                tourSearchQuery, filteredTournamentUnits, tournamentStats,
+                loadGlobalDbManual, toggleBr, resetBrs, resetNations, switchPlayer, selectPlayer
             };
         }
     }).mount('#app');
