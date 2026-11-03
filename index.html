@@ -255,33 +255,53 @@
                             <span class="text-cyan-400 font-black truncate max-w-[170px]">{{ playerBasics ? playerBasics.nickname : '—' }}</span>
                         </div>
 
-                        <!-- Слоты 2, 3, 4: Выбор напарников -->
-                        <div v-for="slotIdx in [1, 2, 3]" :key="slotIdx" class="flex flex-col gap-1">
+                        <!-- Слоты 2, 3, 4: Выбор напарников через поиск автокомплитом -->
+                        <div v-for="slotIdx in [0, 1, 2]" :key="slotIdx" class="flex flex-col gap-1">
                             <div class="flex items-center gap-1.5">
-                                <span class="text-[10px] font-mono text-slate-500 w-4">{{ slotIdx + 1 }}.</span>
-                                <select 
-                                    v-model="squadExtraMembers[slotIdx - 1]" 
-                                    @change="onSquadMemberSelected(slotIdx - 1)"
-                                    class="flex-1 bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-lg px-2 py-1 text-xs text-slate-300 font-medium outline-none cursor-pointer truncate"
-                                >
-                                    <option value="">-- Добавить бойца --</option>
-                                    <option 
-                                        v-for="name in cloudPlayers" 
-                                        :key="name" 
-                                        :value="name"
-                                        :disabled="isMemberAlreadyInSquad(name, slotIdx - 1)"
+                                <span class="text-[10px] font-mono text-slate-500 w-4 shrink-0">{{ slotIdx + 2 }}.</span>
+                                
+                                <!-- Если боец уже выбран в слоте -->
+                                <div v-if="squadExtraMembers[slotIdx]" class="flex-1 bg-slate-950 border border-cyan-500/40 rounded-lg px-2.5 py-1 flex items-center justify-between text-xs">
+                                    <span class="font-bold text-slate-200 truncate flex items-center gap-1.5">
+                                        <span class="text-cyan-400 text-[10px]">👤</span>
+                                        <span class="truncate">{{ squadExtraMembers[slotIdx] }}</span>
+                                    </span>
+                                    <button 
+                                        @click="removeSquadMemberSlot(slotIdx)" 
+                                        class="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded px-1.5 py-0.5 text-xs cursor-pointer transition ml-1"
+                                        title="Удалить из отряда"
                                     >
-                                        {{ name }}
-                                    </option>
-                                </select>
-                                <button 
-                                    v-if="squadExtraMembers[slotIdx - 1]" 
-                                    @click="removeSquadMemberSlot(slotIdx - 1)" 
-                                    class="text-rose-400 hover:text-rose-300 p-1 text-xs cursor-pointer"
-                                    title="Удалить из отряда"
-                                >
-                                    ✕
-                                </button>
+                                        ✕
+                                    </button>
+                                </div>
+
+                                <!-- Если слот пуст: поисковая строка автокомплита -->
+                                <div v-else class="relative flex-1 squad-slot-search-container">
+                                    <input 
+                                        type="text" 
+                                        v-model="squadSlotQueries[slotIdx]" 
+                                        @focus="activeSquadSuggestIndex = slotIdx"
+                                        @input="activeSquadSuggestIndex = slotIdx"
+                                        :placeholder="`Поиск бойца #${slotIdx + 2}...`" 
+                                        class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-lg px-2 py-1 text-xs text-slate-200 placeholder-slate-600 outline-none transition"
+                                    >
+                                    <div 
+                                        v-if="activeSquadSuggestIndex === slotIdx" 
+                                        class="absolute left-0 right-0 mt-1 bg-slate-900 border border-slate-800 rounded-lg shadow-2xl max-h-44 overflow-y-auto z-50 divide-y divide-slate-950"
+                                    >
+                                        <button 
+                                            v-for="name in getFilteredSquadMembers(slotIdx)" 
+                                            :key="name" 
+                                            @click="selectSquadMember(slotIdx, name)"
+                                            class="w-full text-left px-2.5 py-1.5 text-xs hover:bg-slate-800 text-slate-300 hover:text-cyan-400 transition cursor-pointer font-medium block truncate"
+                                        >
+                                            👤 {{ name }}
+                                        </button>
+                                        <div v-if="getFilteredSquadMembers(slotIdx).length === 0" class="p-2 text-center text-[10px] text-slate-500">
+                                            Боец не найден
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -548,14 +568,26 @@
                                             </div>
 
                                             <div v-if="soloAirActiveNationData.bestPlane" class="my-4">
-                                                <div class="text-2xl font-black text-slate-100 flex items-center gap-2">
-                                                    <span v-if="soloAirActiveNationData.bestPlane.isPrem" class="text-amber-400 text-lg">★</span>
-                                                    {{ soloAirActiveNationData.bestPlane.name }}
-                                                </div>
-                                                <div class="text-xs font-mono text-slate-500 mt-1 flex items-center gap-2">
-                                                    <span>{{ soloAirActiveNationData.bestPlane.id }}</span>
-                                                    <span>•</span>
-                                                    <span class="text-sky-400 font-medium">{{ soloAirActiveNationData.bestPlane.roleTitle }}</span>
+                                                <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                                                    <a :href="'https://wiki.warthunder.ru/unit/' + soloAirActiveNationData.bestPlane.id" target="_blank" class="group shrink-0 block" title="Открыть статью на War Thunder Wiki">
+                                                        <img :src="'https://static.encyclopedia.warthunder.com/slots/' + soloAirActiveNationData.bestPlane.id + '.png'" class="h-16 w-32 object-contain bg-slate-950/80 p-2 rounded-2xl border border-slate-800 group-hover:border-sky-400 transition shadow-lg" loading="lazy" @error="$event.target.style.display='none'">
+                                                    </a>
+                                                    <div class="min-w-0 flex-1">
+                                                        <div class="text-2xl font-black text-slate-100 flex items-center gap-2 truncate">
+                                                            <span v-if="soloAirActiveNationData.bestPlane.isPrem" class="text-amber-400 text-lg shrink-0">★</span>
+                                                            <a :href="'https://wiki.warthunder.ru/unit/' + soloAirActiveNationData.bestPlane.id" target="_blank" class="hover:text-sky-300 hover:underline transition truncate">
+                                                                {{ soloAirActiveNationData.bestPlane.name }}
+                                                            </a>
+                                                        </div>
+                                                        <div class="text-xs font-mono text-slate-500 mt-1 flex flex-wrap items-center gap-2">
+                                                            <span>{{ soloAirActiveNationData.bestPlane.id }}</span>
+                                                            <span>•</span>
+                                                            <span class="text-sky-400 font-medium">{{ soloAirActiveNationData.bestPlane.roleTitle }}</span>
+                                                            <a :href="'https://wiki.warthunder.ru/unit/' + soloAirActiveNationData.bestPlane.id" target="_blank" class="text-[11px] text-sky-400 hover:text-sky-300 font-bold hover:underline ml-1">
+                                                                Статья на Wiki ↗
+                                                            </a>
+                                                        </div>
+                                                    </div>
                                                 </div>
 
                                                 <div class="mt-4 flex items-center gap-2">
@@ -734,11 +766,23 @@
                                                 </span>
                                             </div>
                                             <div v-if="activeSquadData.tank1" class="my-2">
-                                                <div class="text-sm font-black text-slate-100 flex items-center gap-1.5">
-                                                    <span v-if="activeSquadData.tank1.isPrem" class="text-amber-400 text-xs">★</span>
-                                                    {{ activeSquadData.tank1.name }}
+                                                <div class="flex items-center gap-2.5">
+                                                    <a :href="'https://wiki.warthunder.ru/unit/' + activeSquadData.tank1.id" target="_blank" class="shrink-0 group block" title="Открыть статью на War Thunder Wiki">
+                                                        <img :src="'https://static.encyclopedia.warthunder.com/slots/' + activeSquadData.tank1.id + '.png'" class="h-10 w-20 object-contain bg-slate-950/80 p-1 rounded-lg border border-slate-800 group-hover:border-cyan-500 transition shadow-inner" loading="lazy" @error="$event.target.style.display='none'">
+                                                    </a>
+                                                    <div class="min-w-0 flex-1">
+                                                        <div class="text-sm font-black text-slate-100 flex items-center gap-1.5 truncate">
+                                                            <span v-if="activeSquadData.tank1.isPrem" class="text-amber-400 text-xs shrink-0">★</span>
+                                                            <a :href="'https://wiki.warthunder.ru/unit/' + activeSquadData.tank1.id" target="_blank" class="hover:text-cyan-400 hover:underline transition truncate">
+                                                                {{ activeSquadData.tank1.name }}
+                                                            </a>
+                                                        </div>
+                                                        <div class="flex items-center gap-2 text-[10px] font-mono text-slate-500 mt-0.5">
+                                                            <span class="truncate">{{ activeSquadData.tank1.id }}</span>
+                                                            <a :href="'https://wiki.warthunder.ru/unit/' + activeSquadData.tank1.id" target="_blank" class="text-[9px] text-cyan-400 hover:underline font-bold shrink-0">Wiki ↗</a>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div class="text-[10px] font-mono text-slate-500 mt-0.5">{{ activeSquadData.tank1.id }}</div>
                                                 <div class="mt-3">
                                                     <span v-if="activeSquadData.tank1.status === 2" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                                                         ♠ В пиках (ТОП)
@@ -783,11 +827,23 @@
                                                 </span>
                                             </div>
                                             <div v-if="activeSquadData.tank2" class="my-2">
-                                                <div class="text-sm font-black text-slate-100 flex items-center gap-1.5">
-                                                    <span v-if="activeSquadData.tank2.isPrem" class="text-amber-400 text-xs">★</span>
-                                                    {{ activeSquadData.tank2.name }}
+                                                <div class="flex items-center gap-2.5">
+                                                    <a :href="'https://wiki.warthunder.ru/unit/' + activeSquadData.tank2.id" target="_blank" class="shrink-0 group block" title="Открыть статью на War Thunder Wiki">
+                                                        <img :src="'https://static.encyclopedia.warthunder.com/slots/' + activeSquadData.tank2.id + '.png'" class="h-10 w-20 object-contain bg-slate-950/80 p-1 rounded-lg border border-slate-800 group-hover:border-cyan-500 transition shadow-inner" loading="lazy" @error="$event.target.style.display='none'">
+                                                    </a>
+                                                    <div class="min-w-0 flex-1">
+                                                        <div class="text-sm font-black text-slate-100 flex items-center gap-1.5 truncate">
+                                                            <span v-if="activeSquadData.tank2.isPrem" class="text-amber-400 text-xs shrink-0">★</span>
+                                                            <a :href="'https://wiki.warthunder.ru/unit/' + activeSquadData.tank2.id" target="_blank" class="hover:text-cyan-400 hover:underline transition truncate">
+                                                                {{ activeSquadData.tank2.name }}
+                                                            </a>
+                                                        </div>
+                                                        <div class="flex items-center gap-2 text-[10px] font-mono text-slate-500 mt-0.5">
+                                                            <span class="truncate">{{ activeSquadData.tank2.id }}</span>
+                                                            <a :href="'https://wiki.warthunder.ru/unit/' + activeSquadData.tank2.id" target="_blank" class="text-[9px] text-cyan-400 hover:underline font-bold shrink-0">Wiki ↗</a>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div class="text-[10px] font-mono text-slate-500 mt-0.5">{{ activeSquadData.tank2.id }}</div>
                                                 <div class="mt-3">
                                                     <span v-if="activeSquadData.tank2.status === 2" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                                                         ♠ В пиках (ТОП)
@@ -832,13 +888,23 @@
                                                 </span>
                                             </div>
                                             <div v-if="activeSquadData.spaa" class="my-2">
-                                                <div class="text-sm font-black text-slate-100 flex items-center gap-1.5">
-                                                    <span v-if="activeSquadData.spaa.isPrem" class="text-amber-400 text-xs">★</span>
-                                                    {{ activeSquadData.spaa.name }}
-                                                </div>
-                                                <div class="text-[10px] font-mono text-slate-500 mt-0.5 flex items-center gap-1">
-                                                    <span>{{ activeSquadData.spaa.id }}</span>
-                                                    <span v-if="activeSquadData.spaa.isUnderBr" class="text-[9px] text-amber-400 font-bold bg-amber-500/10 px-1 rounded">Ниже вилки</span>
+                                                <div class="flex items-center gap-2.5">
+                                                    <a :href="'https://wiki.warthunder.ru/unit/' + activeSquadData.spaa.id" target="_blank" class="shrink-0 group block" title="Открыть статью на War Thunder Wiki">
+                                                        <img :src="'https://static.encyclopedia.warthunder.com/slots/' + activeSquadData.spaa.id + '.png'" class="h-10 w-20 object-contain bg-slate-950/80 p-1 rounded-lg border border-slate-800 group-hover:border-amber-500 transition shadow-inner" loading="lazy" @error="$event.target.style.display='none'">
+                                                    </a>
+                                                    <div class="min-w-0 flex-1">
+                                                        <div class="text-sm font-black text-slate-100 flex items-center gap-1.5 truncate">
+                                                            <span v-if="activeSquadData.spaa.isPrem" class="text-amber-400 text-xs shrink-0">★</span>
+                                                            <a :href="'https://wiki.warthunder.ru/unit/' + activeSquadData.spaa.id" target="_blank" class="hover:text-amber-400 hover:underline transition truncate">
+                                                                {{ activeSquadData.spaa.name }}
+                                                            </a>
+                                                        </div>
+                                                        <div class="flex items-center gap-2 text-[10px] font-mono text-slate-500 mt-0.5">
+                                                            <span class="truncate">{{ activeSquadData.spaa.id }}</span>
+                                                            <span v-if="activeSquadData.spaa.isUnderBr" class="text-[9px] text-amber-400 font-bold bg-amber-500/10 px-1 rounded shrink-0">Ниже вилки</span>
+                                                            <a :href="'https://wiki.warthunder.ru/unit/' + activeSquadData.spaa.id" target="_blank" class="text-[9px] text-amber-400 hover:underline font-bold shrink-0">Wiki ↗</a>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <div class="mt-3">
                                                     <span v-if="activeSquadData.spaa.status === 2" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
@@ -884,13 +950,23 @@
                                                 </span>
                                             </div>
                                             <div v-if="activeSquadData.plane" class="my-2">
-                                                <div class="text-sm font-black text-slate-100 flex items-center gap-1.5">
-                                                    <span v-if="activeSquadData.plane.isPrem" class="text-amber-400 text-xs">★</span>
-                                                    {{ activeSquadData.plane.name }}
-                                                </div>
-                                                <div class="text-[10px] font-mono text-slate-500 mt-0.5 flex items-center gap-1">
-                                                    <span>{{ activeSquadData.plane.id }}</span>
-                                                    <span v-if="activeSquadData.plane.isDifferentTankBr" class="text-[9px] text-sky-400 font-bold bg-sky-500/10 px-1 rounded">ТРБ БР</span>
+                                                <div class="flex items-center gap-2.5">
+                                                    <a :href="'https://wiki.warthunder.ru/unit/' + activeSquadData.plane.id" target="_blank" class="shrink-0 group block" title="Открыть статью на War Thunder Wiki">
+                                                        <img :src="'https://static.encyclopedia.warthunder.com/slots/' + activeSquadData.plane.id + '.png'" class="h-10 w-20 object-contain bg-slate-950/80 p-1 rounded-lg border border-slate-800 group-hover:border-sky-400 transition shadow-inner" loading="lazy" @error="$event.target.style.display='none'">
+                                                    </a>
+                                                    <div class="min-w-0 flex-1">
+                                                        <div class="text-sm font-black text-slate-100 flex items-center gap-1.5 truncate">
+                                                            <span v-if="activeSquadData.plane.isPrem" class="text-amber-400 text-xs shrink-0">★</span>
+                                                            <a :href="'https://wiki.warthunder.ru/unit/' + activeSquadData.plane.id" target="_blank" class="hover:text-sky-400 hover:underline transition truncate">
+                                                                {{ activeSquadData.plane.name }}
+                                                            </a>
+                                                        </div>
+                                                        <div class="flex items-center gap-2 text-[10px] font-mono text-slate-500 mt-0.5">
+                                                            <span class="truncate">{{ activeSquadData.plane.id }}</span>
+                                                            <span v-if="activeSquadData.plane.isDifferentTankBr" class="text-[9px] text-sky-400 font-bold bg-sky-500/10 px-1 rounded shrink-0">ТРБ БР</span>
+                                                            <a :href="'https://wiki.warthunder.ru/unit/' + activeSquadData.plane.id" target="_blank" class="text-[9px] text-sky-400 hover:underline font-bold shrink-0">Wiki ↗</a>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <div class="mt-3">
                                                     <span v-if="activeSquadData.plane.status === 2" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
@@ -1001,34 +1077,76 @@
                                         <div 
                                             v-for="m in tc.members" 
                                             :key="m.name"
-                                            class="bg-slate-950/80 border border-slate-800/80 rounded-xl p-2.5 flex items-center justify-between gap-3 text-xs"
+                                            class="bg-slate-950/80 border border-slate-800/80 rounded-xl p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs"
                                         >
-                                            <div class="flex items-center gap-2 min-w-0">
-                                                <span class="w-1.5 h-1.5 rounded-full" :class="m.isReady ? 'bg-emerald-400' : 'bg-rose-500'"></span>
+                                            <div class="flex items-center gap-2 min-w-0 shrink-0">
+                                                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="m.isReady ? 'bg-emerald-400' : 'bg-rose-500'"></span>
                                                 <span class="font-bold text-slate-200 truncate">{{ m.name }}</span>
+                                                <span v-if="m.isReady" class="text-[9px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-900/60 px-1 rounded">
+                                                    {{ squadBattleType === 'air_rb' || squadTeamFocus === 'air' ? `${m.airVariations.length} л` : `${m.groundSetup.length}/3 м` }}
+                                                </span>
                                             </div>
 
                                             <!-- Роль и назначенная техника игрока -->
-                                            <div class="flex items-center gap-2 text-[10px] font-mono">
-                                                <template v-if="squadBattleType === 'air_rb'">
-                                                    <span v-if="m.bestAir" class="bg-sky-950/60 border border-sky-900 px-2 py-0.5 rounded text-sky-300 truncate max-w-[200px]" :title="m.bestAir.name">
-                                                        ✈️ {{ m.bestAir.name }} ({{ m.bestAir.br.toFixed(1) }}) {{ m.bestAir.status === 2 ? '♠' : '' }}
+                                            <div class="flex flex-wrap items-center gap-1.5 text-[10px] font-mono">
+                                                <!-- 1. РЕЖИМ: ЛЕТКА РБ (ИЛИ ФОКУС ЛЕТКА) -> ВАРИАЦИИ САМОЛЕТОВ -->
+                                                <template v-if="squadBattleType === 'air_rb' || squadTeamFocus === 'air'">
+                                                    <template v-if="m.airVariations && m.airVariations.length > 0">
+                                                        <span 
+                                                            v-for="p in m.airVariations" 
+                                                            :key="p.id" 
+                                                            class="bg-sky-950/60 border border-sky-900 px-2 py-0.5 rounded text-sky-300 flex items-center gap-1 truncate max-w-[210px]" 
+                                                            :title="p.name + ' (' + p.roleTitle + ', БР ' + p.br.toFixed(1) + ')'"
+                                                        >
+                                                            <span class="text-[9px] text-sky-400 font-bold uppercase">{{ p.icon }} {{ p.roleShort }}:</span>
+                                                            <span class="truncate">{{ p.name }}</span>
+                                                            <span class="font-bold" :class="p.status === 2 ? 'text-emerald-400' : 'text-sky-300'">
+                                                                {{ p.br.toFixed(1) }}{{ p.status === 2 ? '♠' : '' }}
+                                                            </span>
+                                                        </span>
+                                                        <span v-if="m.totalAirCount > m.airVariations.length" class="text-[9px] text-slate-500 font-bold bg-slate-900 px-1 py-0.5 rounded border border-slate-800" :title="'Всего ' + m.totalAirCount + ' самолетов в вилке'">
+                                                            +{{ m.totalAirCount - m.airVariations.length }}
+                                                        </span>
+                                                    </template>
+                                                    <span v-else class="text-rose-400 font-sans font-medium text-[10px]">
+                                                        Нет самолета в вилке
                                                     </span>
                                                 </template>
+
+                                                <!-- 2. РЕЖИМ: ТАНКИ РБ (ВСЕ ИЛИ ТАНКИ) -> СЕТАП ИЗ 3 МАШИН -->
                                                 <template v-else>
-                                                    <span v-if="m.bestTank" class="bg-slate-900 border border-slate-800 px-2 py-0.5 rounded text-slate-300 truncate max-w-[130px]" :title="m.bestTank.name">
-                                                        🛡️ {{ m.bestTank.name }} ({{ m.bestTank.br.toFixed(1) }}) {{ m.bestTank.status === 2 ? '♠' : '' }}
-                                                    </span>
-                                                    <span v-if="m.bestAir" class="bg-sky-950/60 border border-sky-900 px-2 py-0.5 rounded text-sky-300 truncate max-w-[130px]" :title="m.bestAir.name">
-                                                        ✈️ {{ m.bestAir.name }} ({{ m.bestAir.br.toFixed(1) }})
-                                                    </span>
-                                                    <span v-if="m.bestSpaa" class="bg-amber-950/60 border border-amber-900 px-2 py-0.5 rounded text-amber-300 truncate max-w-[110px]" :title="m.bestSpaa.name">
-                                                        🎯 {{ m.bestSpaa.name }}
+                                                    <template v-if="m.groundSetup && m.groundSetup.length > 0">
+                                                        <span 
+                                                            v-for="unit in m.groundSetup" 
+                                                            :key="unit.id"
+                                                            :class="unit.slotType === 'ЗСУ' ? 'bg-amber-950/60 border-amber-900 text-amber-300' : 'bg-slate-900 border-slate-800 text-slate-300'"
+                                                            class="border px-2 py-0.5 rounded flex items-center gap-1 truncate max-w-[170px]"
+                                                            :title="unit.name + ' (' + (unit.slotType === 'ЗСУ' ? 'ЗСУ' : 'Танк') + ', БР ' + unit.br.toFixed(1) + ')'"
+                                                        >
+                                                            <span class="text-[9px] text-slate-500 font-bold uppercase">{{ unit.icon }} {{ unit.slotType }}:</span>
+                                                            <span class="truncate">{{ unit.name }}</span>
+                                                            <span class="font-bold" :class="unit.status === 2 ? 'text-emerald-400' : 'text-slate-400'">
+                                                                {{ unit.br.toFixed(1) }}{{ unit.status === 2 ? '♠' : '' }}
+                                                            </span>
+                                                        </span>
+
+                                                        <!-- Если фокус Все и есть самолет в ТРБ -->
+                                                        <span 
+                                                            v-if="squadTeamFocus === 'all' && m.bestAir" 
+                                                            class="bg-sky-950/60 border border-sky-900 text-sky-300 border px-2 py-0.5 rounded flex items-center gap-1 truncate max-w-[170px]"
+                                                            :title="m.bestAir.name + ' (Авиация ТРБ, БР ' + m.bestAir.br.toFixed(1) + ')'"
+                                                        >
+                                                            <span class="text-[9px] text-sky-400 font-bold uppercase">✈️ АВИА:</span>
+                                                            <span class="truncate">{{ m.bestAir.name }}</span>
+                                                            <span class="font-bold text-sky-400">
+                                                                {{ m.bestAir.br.toFixed(1) }}{{ m.bestAir.status === 2 ? '♠' : '' }}
+                                                            </span>
+                                                        </span>
+                                                    </template>
+                                                    <span v-else class="text-rose-400 font-sans font-medium text-[10px]">
+                                                        Нет техники в вилке
                                                     </span>
                                                 </template>
-                                                <span v-if="!m.isReady" class="text-rose-400 font-sans font-medium">
-                                                    Нет машины
-                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -1249,9 +1367,23 @@
                                 <tbody class="divide-y divide-slate-900/40 text-slate-300 font-mono">
                                     <tr v-for="item in currentTableData" :key="item.id" :class="item.status === 0 ? 'opacity-35 bg-slate-950/40' : 'hover:bg-slate-900/20'" class="transition">
                                         <td class="p-2.5 pl-4 font-sans font-medium text-slate-200">
-                                            <span v-if="item.isPrem" class="text-amber-400 mr-1">★</span>
-                                            {{ item.name }}
-                                            <span class="block text-[10px] text-slate-600 font-mono mt-0.5">{{ item.id }}</span>
+                                            <div class="flex items-center gap-3">
+                                                <a :href="'https://wiki.warthunder.ru/unit/' + item.id" target="_blank" class="shrink-0 group block" title="Открыть статью на War Thunder Wiki">
+                                                    <img :src="'https://static.encyclopedia.warthunder.com/slots/' + item.id + '.png'" class="h-7 w-14 object-contain bg-slate-950/80 border border-slate-800 rounded p-0.5 group-hover:border-cyan-500 transition shadow-sm" loading="lazy" @error="$event.target.style.display='none'">
+                                                </a>
+                                                <div class="min-w-0">
+                                                    <div class="flex items-center gap-1.5 truncate">
+                                                        <span v-if="item.isPrem" class="text-amber-400 text-xs shrink-0">★</span>
+                                                        <a :href="'https://wiki.warthunder.ru/unit/' + item.id" target="_blank" class="hover:text-cyan-400 hover:underline transition truncate" title="Открыть на Wiki">
+                                                            {{ item.name }}
+                                                        </a>
+                                                    </div>
+                                                    <div class="flex items-center gap-2 text-[10px] text-slate-500 font-mono mt-0.5">
+                                                        <span class="truncate">{{ item.id }}</span>
+                                                        <span v-if="item.rank" class="text-[9px] bg-slate-950 border border-slate-800 px-1 rounded text-slate-400 font-sans">Ранг {{ item.rank }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td class="p-2.5 font-sans">
                                             <span :class="item.type === 'Летка' ? 'text-sky-400' : 'text-slate-400'">{{ item.type }}</span>
@@ -1346,9 +1478,23 @@
                                 <tbody class="divide-y divide-slate-900/40 text-slate-300 font-mono">
                                     <tr v-for="unit in filteredTournamentUnits" :key="unit.id" :class="unit.status === 0 ? 'opacity-40 bg-slate-950/40' : 'hover:bg-slate-900/20'" class="transition">
                                         <td class="p-2.5 pl-4 font-sans font-medium text-slate-200">
-                                            <span v-if="unit.isPrem" class="text-amber-400 mr-1">★</span>
-                                            {{ unit.name }}
-                                            <span class="block text-[10px] text-slate-600 font-mono mt-0.5">{{ unit.id }}</span>
+                                            <div class="flex items-center gap-3">
+                                                <a :href="'https://wiki.warthunder.ru/unit/' + unit.id" target="_blank" class="shrink-0 group block" title="Открыть статью на War Thunder Wiki">
+                                                    <img :src="'https://static.encyclopedia.warthunder.com/slots/' + unit.id + '.png'" class="h-7 w-14 object-contain bg-slate-950/80 border border-slate-800 rounded p-0.5 group-hover:border-amber-500 transition shadow-sm" loading="lazy" @error="$event.target.style.display='none'">
+                                                </a>
+                                                <div class="min-w-0">
+                                                    <div class="flex items-center gap-1.5 truncate">
+                                                        <span v-if="unit.isPrem" class="text-amber-400 text-xs shrink-0">★</span>
+                                                        <a :href="'https://wiki.warthunder.ru/unit/' + unit.id" target="_blank" class="hover:text-amber-400 hover:underline transition truncate" title="Открыть на Wiki">
+                                                            {{ unit.name }}
+                                                        </a>
+                                                    </div>
+                                                    <div class="flex items-center gap-2 text-[10px] text-slate-500 font-mono mt-0.5">
+                                                        <span class="truncate">{{ unit.id }}</span>
+                                                        <span v-if="unit.rank" class="text-[9px] bg-slate-950 border border-slate-800 px-1 rounded text-slate-400 font-sans">Ранг {{ unit.rank }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td class="p-2.5 font-sans">
                                             <span :class="unit.type === 'Летка' ? 'text-sky-400' : 'text-slate-400'">{{ unit.type }}</span>
@@ -1495,9 +1641,30 @@
                 return list;
             });
 
+            const squadSlotQueries = ref(['', '', '']);
+            const activeSquadSuggestIndex = ref(-1);
+
             const isMemberAlreadyInSquad = (name, currentSlotIndex) => {
                 if (playerBasics.value?.nickname === name) return true;
                 return squadExtraMembers.value.some((m, idx) => idx !== currentSlotIndex && m === name);
+            };
+
+            const getFilteredSquadMembers = (slotIdx) => {
+                const query = (squadSlotQueries.value[slotIdx] || '').trim().toLowerCase();
+                const leaderName = playerBasics.value?.nickname;
+                return cloudPlayers.value.filter(name => {
+                    if (name === leaderName) return false;
+                    if (squadExtraMembers.value.some((m, idx) => idx !== slotIdx && m === name)) return false;
+                    if (!query) return true;
+                    return name.toLowerCase().includes(query);
+                });
+            };
+
+            const selectSquadMember = async (slotIdx, name) => {
+                squadExtraMembers.value[slotIdx] = name;
+                squadSlotQueries.value[slotIdx] = '';
+                activeSquadSuggestIndex.value = -1;
+                await ensurePlayerProfile(name);
             };
 
             const onSquadMemberSelected = async (idx) => {
@@ -1509,6 +1676,8 @@
 
             const removeSquadMemberSlot = (idx) => {
                 squadExtraMembers.value[idx] = '';
+                squadSlotQueries.value[idx] = '';
+                activeSquadSuggestIndex.value = -1;
             };
 
             // ========================================================
@@ -1713,7 +1882,7 @@
             };
 
             // ========================================================
-            // АЛГОРИТМ СРАВНЕНИЯ ПО ОТРИДУ (2-4 БОЙЦА)
+            // АЛГОРИТМ СРАВНЕНИЯ ПО ОТРЯДУ (2-4 БОЙЦА)
             // ========================================================
             const teamComparisonResults = computed(() => {
                 const members = activeSquadMembersList.value;
@@ -1733,7 +1902,16 @@
                         const profile = savedProfiles.value[uid];
                         
                         if (!profile) {
-                            memberEvaluations.push({ name: nickname, isReady: false, bestTank: null, bestAir: null, bestSpaa: null });
+                            memberEvaluations.push({
+                                name: nickname,
+                                isReady: false,
+                                groundSetup: [],
+                                bestTank: null,
+                                bestAir: null,
+                                airVariations: [],
+                                totalAirCount: 0,
+                                bestSpaa: null
+                            });
                             continue;
                         }
 
@@ -1751,14 +1929,18 @@
                             if (isGround && !isAirRbMode) {
                                 const br = m.battleRatingHistorical || 1.0;
                                 if (br >= minBr && br <= maxBr) {
-                                    if (m.unitClass === 'exp_SPAA') spaa.push({ id: vId, name: m.name, br, status: st });
-                                    else tanks.push({ id: vId, name: m.name, br, status: st });
+                                    if (m.unitClass === 'exp_SPAA') spaa.push({ id: vId, name: m.name, br, status: st, unitClass: m.unitClass });
+                                    else tanks.push({ id: vId, name: m.name, br, status: st, unitClass: m.unitClass });
                                 }
                             } else if (isAir) {
                                 // Если Летка РБ — честный Авиа БР, если ТРБ — танковый БР авиации
                                 const br = isAirRbMode ? (m.battleRatingHistorical || 1.0) : (m.battleRatingTankHistorical || m.battleRatingHistorical || 1.0);
                                 if (br >= minBr && br <= maxBr) {
-                                    air.push({ id: vId, name: m.name, br, status: st });
+                                    const unitClass = m.unitClass;
+                                    const roleTitle = unitClass === 'exp_assault' ? 'Штурмовик' : (unitClass === 'exp_bomber' ? 'Бомбардировщик' : 'Истребитель');
+                                    const roleShort = unitClass === 'exp_assault' ? 'Штурм' : (unitClass === 'exp_bomber' ? 'Бомбер' : 'Истр');
+                                    const icon = unitClass === 'exp_assault' ? '⚡' : (unitClass === 'exp_bomber' ? '💣' : '✈️');
+                                    air.push({ id: vId, name: m.name, br, status: st, unitClass, roleTitle, roleShort, icon });
                                 }
                             }
                         }
@@ -1768,17 +1950,27 @@
                         spaa.sort(sorter);
                         air.sort(sorter);
 
+                        // Формирование сетапа из 3 наземных машин: 2 танка + ЗСУ (или 3 танка)
+                        const groundSetup = [];
+                        if (tanks[0]) groundSetup.push({ ...tanks[0], slotType: 'Т1', icon: '🛡️' });
+                        if (tanks[1]) groundSetup.push({ ...tanks[1], slotType: 'Т2', icon: '🛡️' });
+                        if (spaa[0]) {
+                            groundSetup.push({ ...spaa[0], slotType: 'ЗСУ', icon: '🎯' });
+                        } else if (tanks[2]) {
+                            groundSetup.push({ ...tanks[2], slotType: 'Т3', icon: '🛡️' });
+                        }
+
                         let isReady = false;
                         if (isAirRbMode) {
                             // В Летке РБ достаточно ровно 1 самолета
                             isReady = air.length >= 1;
                         } else {
                             if (squadTeamFocus.value === 'tanks') {
-                                isReady = tanks.length >= 1;
+                                isReady = groundSetup.length >= 2;
                             } else if (squadTeamFocus.value === 'air') {
                                 isReady = air.length >= 1;
                             } else {
-                                isReady = (tanks.length >= 2) || (tanks.length >= 1 && air.length >= 1) || (tanks.length >= 1 && spaa.length >= 1);
+                                isReady = groundSetup.length >= 2;
                             }
                         }
 
@@ -1787,8 +1979,11 @@
                         memberEvaluations.push({
                             name: nickname,
                             isReady,
+                            groundSetup,
                             bestTank: tanks[0] || null,
                             bestAir: air[0] || null,
+                            airVariations: air.slice(0, 3),
+                            totalAirCount: air.length,
                             bestSpaa: spaa[0] || null
                         });
                     }
@@ -1971,6 +2166,7 @@
                         type: meta.unitMoveType === 'air' ? 'Летка' : 'Танк',
                         country: meta.country,
                         br: meta.battleRatingHistorical || 1.0,
+                        rank: meta.rank || null,
                         isPrem: meta.isPrem || meta.isEvent || meta.isGift,
                         status: status
                     });
@@ -2108,6 +2304,9 @@
                     if (searchBox && !searchBox.contains(e.target)) {
                         showSuggestions.value = false;
                     }
+                    if (!e.target.closest('.squad-slot-search-container')) {
+                        activeSquadSuggestIndex.value = -1;
+                    }
                 });
 
                 // Реестр игроков
@@ -2229,6 +2428,7 @@
                     country: meta.country,
                     br: realBr,
                     bracket: bracket,
+                    rank: meta.rank || null,
                     isPrem: meta.isPrem || meta.isEvent || meta.isGift,
                     status: status
                 };
@@ -2298,10 +2498,11 @@
             });
 
             return {
+                globalDb, savedProfiles,
                 filters, dbLoaded, playerLoaded, brBrackets, nationsMap, nationsDecorated, currentTableData, dashboardStats, isFallbackActive, playerBasics, activePlayerUid, cloudPlayers, playerSearchQuery, showSuggestions, filteredCloudPlayers, isExtensionInstalled, brCounters, typeCounters, nationCounters, availableTourPresets, activePresetData,
                 activeMainTab, squadSubMode, squadBattleType, squadTargetBr, squadMinBr, squadNation, popularSquadBrs, squadAllNationsData, activeSquadData, overrideSlot,
                 soloAirAllNationsData, soloAirActiveNationData,
-                squadExtraMembers, activeSquadMembersList, squadTeamFocus, isMemberAlreadyInSquad, onSquadMemberSelected, removeSquadMemberSlot, teamComparisonResults,
+                squadExtraMembers, squadSlotQueries, activeSquadSuggestIndex, getFilteredSquadMembers, selectSquadMember, activeSquadMembersList, squadTeamFocus, isMemberAlreadyInSquad, onSquadMemberSelected, removeSquadMemberSlot, teamComparisonResults,
                 srbViewMode, srbBracketsAnalysis, selectedSrbBracket, selectedSrbRoster,
                 tourSearchQuery, filteredTournamentUnits, tournamentStats,
                 loadGlobalDbManual, toggleBr, resetBrs, resetNations, switchPlayer, selectPlayer
