@@ -83,8 +83,19 @@
             </div>
         </div>
         
-        <!-- Статус базы техники -->
-        <div class="flex items-center gap-4 shrink-0">
+        <!-- Действия и статус базы техники -->
+        <div class="flex items-center gap-3 shrink-0">
+            <!-- Кнопка «Поделиться» -->
+            <button 
+                @click="copyShareLink" 
+                class="bg-gradient-to-r from-cyan-500/20 to-sky-500/20 hover:from-cyan-500/30 hover:to-sky-500/30 border border-cyan-500/40 hover:border-cyan-400 text-cyan-300 hover:text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm cursor-pointer"
+                :title="'Скопировать готовую ссылку со всеми выбранными параметрами'"
+            >
+                <span class="text-sm">{{ copiedRecently ? '✓' : '🔗' }}</span>
+                <span>{{ copiedRecently ? 'Скопировано!' : 'Поделиться' }}</span>
+            </button>
+
+            <!-- Статус базы техники -->
             <label v-if="!dbLoaded" class="flex flex-col justify-center px-3 py-1.5 border border-dashed border-amber-600/50 hover:border-amber-500 rounded-xl cursor-pointer text-xs bg-slate-950/80 transition min-w-[160px]">
                 <span class="text-amber-400 font-medium text-center animate-pulse">⚠️ Выбрать global_db.json</span>
                 <input type="file" @change="loadGlobalDbManual" class="hidden" accept=".json">
@@ -489,6 +500,13 @@
 
                                 <div class="flex items-center gap-2">
                                     <button 
+                                        @click="copyShareLink" 
+                                        class="bg-slate-900 hover:bg-slate-800 border border-cyan-500/40 text-cyan-300 hover:text-cyan-200 text-xs px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 font-medium"
+                                        title="Скопировать ссылку на сетап под этот БР"
+                                    >
+                                        <span>{{ copiedRecently ? '✓ Скопировано' : '🔗 Поделиться' }}</span>
+                                    </button>
+                                    <button 
                                         v-if="squadNation !== 'all'" 
                                         @click="squadNation = 'all'" 
                                         class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 font-medium"
@@ -672,6 +690,13 @@
                                 </div>
 
                                 <div class="flex items-center gap-2">
+                                    <button 
+                                        @click="copyShareLink" 
+                                        class="bg-slate-900 hover:bg-slate-800 border border-cyan-500/40 text-cyan-300 hover:text-cyan-200 text-xs px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 font-medium"
+                                        title="Скопировать ссылку на сетап под этот БР"
+                                    >
+                                        <span>{{ copiedRecently ? '✓ Скопировано' : '🔗 Поделиться' }}</span>
+                                    </button>
                                     <button 
                                         v-if="squadNation !== 'all'" 
                                         @click="squadNation = 'all'" 
@@ -1030,6 +1055,13 @@
                                 <div class="bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl text-xs font-mono text-slate-300">
                                     Отряд: <span class="text-cyan-400 font-bold">{{ activeSquadMembersList.join(' + ') }}</span>
                                 </div>
+                                <button 
+                                    @click="copyShareLink" 
+                                    class="bg-cyan-500 hover:bg-cyan-400 text-black font-black px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.4)] cursor-pointer"
+                                    title="Скопировать ссылку на этот отряд со всеми бойцами и БР"
+                                >
+                                    <span>{{ copiedRecently ? '✓ Скопировано' : '🔗 Поделиться отрядом' }}</span>
+                                </button>
                             </div>
                         </div>
 
@@ -1521,6 +1553,35 @@
             </template>
         </main>
     </div>
+
+    <!-- ВСПЛЫВАЮЩЕЕ УВЕДОМЛЕНИЕ О КОПИРОВАНИИ ССЫЛКИ (TOAST) -->
+    <transition
+        enter-active-class="transition duration-300 ease-out transform"
+        enter-from-class="opacity-0 translate-y-6 scale-95"
+        enter-to-class="opacity-100 translate-y-0 scale-100"
+        leave-active-class="transition duration-200 ease-in transform"
+        leave-from-class="opacity-100 translate-y-0 scale-100"
+        leave-to-class="opacity-0 translate-y-6 scale-95"
+    >
+        <div 
+            v-if="toastMessage" 
+            class="fixed bottom-6 right-6 z-50 bg-slate-900/95 border-2 border-cyan-500 text-slate-100 px-5 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(6,182,212,0.3)] flex items-center gap-3.5 backdrop-blur-md max-w-md"
+        >
+            <div class="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 text-xl shrink-0">
+                🔗
+            </div>
+            <div class="min-w-0 flex-1">
+                <div class="text-xs font-black text-cyan-300 flex items-center gap-2">
+                    <span>Ссылка скопирована в буфер!</span>
+                    <span class="text-[9px] bg-cyan-950 border border-cyan-800 text-cyan-400 px-1.5 py-0.5 rounded font-mono font-bold">Готово</span>
+                </div>
+                <div class="text-[11px] text-slate-300 mt-1 truncate font-medium">{{ toastMessage }}</div>
+            </div>
+            <button @click="toastMessage = ''" class="text-slate-500 hover:text-slate-300 transition text-sm p-1 cursor-pointer">
+                ✕
+            </button>
+        </div>
+    </transition>
 </div>
 
 <script>
@@ -1606,28 +1667,205 @@
             });
 
             watch(() => filters.tourType, (newType) => {
-                const firstAvailable = tournamentPresets.value.find(p => p.type === newType);
-                filters.tourPresetId = firstAvailable ? firstAvailable.id : '';
+                const current = tournamentPresets.value.find(p => p.id === filters.tourPresetId);
+                if (!current || current.type !== newType) {
+                    const firstAvailable = tournamentPresets.value.find(p => p.type === newType);
+                    filters.tourPresetId = firstAvailable ? firstAvailable.id : '';
+                }
             });
 
-            // Загрузка профиля игрока на лету
+            // Загрузка профиля игрока на лету (с поддержкой разных вариантов путей, спецсимволов и кеширования)
             const ensurePlayerProfile = async (nickname) => {
                 if (!nickname) return null;
                 const uid = 'cloud_' + nickname;
                 if (savedProfiles.value[uid]) return savedProfiles.value[uid];
-                try {
-                    const res = await fetch(`players/${nickname}.json?t=` + Date.now());
-                    if (res.ok) {
-                        const data = await res.json();
-                        savedProfiles.value[uid] = {
-                            SpadeInfo: data.SpadeInfo || data,
-                            Basics: data.Basics || { nickname: nickname, SquadronName: 'ПОЛК', uid: '' }
-                        };
-                        return savedProfiles.value[uid];
+
+                // Варианты имен для поиска (включая точный регистр из cloudPlayers)
+                const candidateNames = [nickname];
+                if (cloudPlayers.value && cloudPlayers.value.length > 0) {
+                    const matched = cloudPlayers.value.find(p => p.toLowerCase() === nickname.toLowerCase());
+                    if (matched && !candidateNames.includes(matched)) candidateNames.push(matched);
+                }
+
+                for (const name of candidateNames) {
+                    const urlsToTry = [
+                        `players/${encodeURIComponent(name)}.json?t=` + Date.now(),
+                        `players/${name}.json?t=` + Date.now(),
+                        `players/${encodeURIComponent(name)}?t=` + Date.now(),
+                        `players/${name}?t=` + Date.now()
+                    ];
+
+                    for (const url of urlsToTry) {
+                        try {
+                            const res = await fetch(url);
+                            if (res.ok) {
+                                const data = await res.json();
+                                const profile = {
+                                    SpadeInfo: data.SpadeInfo || data,
+                                    Basics: data.Basics || { nickname: name, SquadronName: 'ПОЛК', uid: '' }
+                                };
+                                savedProfiles.value = {
+                                    ...savedProfiles.value,
+                                    [uid]: profile,
+                                    ['cloud_' + name]: profile
+                                };
+                                return profile;
+                            }
+                        } catch (e) {}
                     }
-                } catch (e) {}
+                }
                 return null;
             };
+
+            // ========================================================
+            // СИСТЕМА УВЕДОМЛЕНИЙ (TOAST) И ШЕРИНГА ССЫЛОК (DEEP LINKING)
+            // ========================================================
+            const toastMessage = ref('');
+            const copiedRecently = ref(false);
+            let toastTimer = null;
+            const isInitializing = ref(true);
+
+            const showToast = (msg) => {
+                toastMessage.value = msg;
+                copiedRecently.value = true;
+                if (toastTimer) clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => {
+                    toastMessage.value = '';
+                    copiedRecently.value = false;
+                }, 4000);
+            };
+
+            // Синхронизация состояния с URL в реальном времени
+            const updateUrlParams = () => {
+                if (isInitializing.value) return;
+                if (typeof window === 'undefined' || !window.history || !window.history.replaceState) return;
+
+                const params = new URLSearchParams();
+
+                // 1. Оперативник / Лидер
+                const currentPlayer = playerBasics.value?.nickname || (activePlayerUid.value ? activePlayerUid.value.replace('cloud_', '') : '');
+                if (currentPlayer) {
+                    params.set('player', currentPlayer);
+                }
+
+                // 2. Главная вкладка
+                if (activeMainTab.value !== 'squadron') {
+                    params.set('tab', activeMainTab.value);
+                }
+
+                // 3. Турниры или Сквад / СРБ / Мульти
+                if (activeMainTab.value === 'tournaments') {
+                    if (filters.tourType && filters.tourType !== 'tank') params.set('tour_type', filters.tourType);
+                    if (filters.tourPresetId) params.set('tour_preset', filters.tourPresetId);
+                    if (tourSearchQuery.value) params.set('tour_q', tourSearchQuery.value);
+                } else {
+                    if (filters.mode && filters.mode !== 'squad') {
+                        params.set('mode', filters.mode);
+                    } else {
+                        params.set('mode', 'squad');
+                    }
+
+                    if (filters.mode === 'squad') {
+                        if (squadSubMode.value !== 'solo') params.set('sub', squadSubMode.value);
+                        if (squadBattleType.value !== 'ground_rb') params.set('type', squadBattleType.value);
+                        if (squadTargetBr.value) params.set('br', squadTargetBr.value.toFixed(1));
+
+                        const extra = squadExtraMembers.value.filter(Boolean);
+                        if (extra.length > 0) {
+                            params.set('squad', extra.join(','));
+                        }
+                        if (squadTeamFocus.value && squadTeamFocus.value !== 'all') {
+                            params.set('focus', squadTeamFocus.value);
+                        }
+                        if (squadNation.value && squadNation.value !== 'all') {
+                            params.set('nation', squadNation.value);
+                        }
+                    } else if (filters.mode === 'squadron') {
+                        if (srbViewMode.value !== 'table') params.set('srb_view', srbViewMode.value);
+                        if (selectedSrbBracket.value) params.set('srb_br', selectedSrbBracket.value.toFixed(1));
+                        if (filters.brs.length > 0) params.set('brs', filters.brs.join(','));
+                    } else if (filters.mode === 'multi') {
+                        if (filters.search) params.set('search', filters.search);
+                        if (filters.type !== 'all') params.set('type', filters.type);
+                        if (filters.brs.length > 0) params.set('brs', filters.brs.join(','));
+                        if (filters.nations.length > 0) params.set('nations', filters.nations.join(','));
+                    }
+                }
+
+                if (filters.showHidden) {
+                    params.set('hidden', '1');
+                }
+
+                const queryString = params.toString();
+                const newUrl = queryString ? `${window.location.pathname}?${queryString}` : window.location.pathname;
+                const currentSearch = window.location.search;
+                if (currentSearch !== (queryString ? `?${queryString}` : '')) {
+                    window.history.replaceState(null, '', newUrl);
+                }
+            };
+
+            const copyShareLink = async () => {
+                updateUrlParams();
+                const url = window.location.href;
+                try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(url);
+                    } else {
+                        const textArea = document.createElement('textarea');
+                        textArea.value = url;
+                        textArea.style.position = 'fixed';
+                        textArea.style.left = '-9999px';
+                        textArea.style.top = '-9999px';
+                        document.body.appendChild(textArea);
+                        textArea.focus();
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                    }
+
+                    let desc = 'Отправьте ссылку соклановцам — откроется этот же сетап!';
+                    if (filters.mode === 'squad') {
+                        if (squadSubMode.value === 'team') {
+                            const members = activeSquadMembersList.value.join(' + ');
+                            desc = `Отряд [${members}] (БР ${squadTargetBr.value.toFixed(1)}, ${squadBattleType.value === 'air_rb' ? 'Летка РБ' : 'Танки РБ'})`;
+                        } else {
+                            desc = `Сетап для ${playerBasics.value?.nickname || 'бойца'} (БР ${squadTargetBr.value.toFixed(1)}, ${squadBattleType.value === 'air_rb' ? 'Летка РБ' : 'Танки РБ'})`;
+                        }
+                    } else if (filters.mode === 'squadron') {
+                        desc = `Расклад СРБ (БР ${selectedSrbBracket.value.toFixed(1)})`;
+                    } else if (activeMainTab.value === 'tournaments') {
+                        desc = `Турнирный регламент ${activePresetData.value?.title || ''}`;
+                    }
+                    showToast(desc);
+                } catch (err) {
+                    prompt('Скопируйте ссылку вручную:', url);
+                }
+            };
+
+            // Отслеживание изменений для мгновенного обновления URL
+            watch([
+                activeMainTab,
+                () => filters.mode,
+                () => filters.tourType,
+                () => filters.tourPresetId,
+                () => filters.showHidden,
+                () => filters.search,
+                () => filters.type,
+                () => filters.brs,
+                () => filters.nations,
+                tourSearchQuery,
+                squadSubMode,
+                squadBattleType,
+                squadTargetBr,
+                squadNation,
+                squadTeamFocus,
+                squadExtraMembers,
+                srbViewMode,
+                selectedSrbBracket,
+                activePlayerUid
+            ], () => {
+                updateUrlParams();
+            }, { deep: true });
 
             // Активный список ников отряда
             const activeSquadMembersList = computed(() => {
@@ -2328,16 +2566,140 @@
                     .catch(() => { console.log("Блокировка CORS локального файла."); });
             });
 
-            const initHub = () => {
-                const lastUid = localStorage.getItem('wt_active_uid');
-                if (lastUid && lastUid.startsWith('cloud_')) {
-                    const nickname = lastUid.replace('cloud_', '');
-                    if (cloudPlayers.value.includes(nickname)) {
-                        activePlayerUid.value = lastUid;
-                        playerSearchQuery.value = nickname;
-                        switchPlayer();
+            const initHub = async () => {
+                isInitializing.value = true;
+
+                // Разбор параметров URL с защитой от разорванного хэша из-за # в никах
+                let rawSearch = window.location.search || '';
+                if (rawSearch.startsWith('?')) rawSearch = rawSearch.slice(1);
+
+                // Если в URL попал неэкранированный # (например ?player=al1en&squad=BenziN#3,Jet100)
+                if (window.location.hash && window.location.hash.length > 1) {
+                    const hashVal = window.location.hash.slice(1);
+                    if (rawSearch && !rawSearch.includes('#')) {
+                        rawSearch += '%23' + hashVal;
                     }
                 }
+
+                const urlParams = new URLSearchParams(rawSearch);
+
+                // 1. Загрузка игрока / лидера
+                const requestedPlayer = urlParams.get('player') || urlParams.get('p');
+                if (requestedPlayer) {
+                    const matched = cloudPlayers.value.find(p => p.toLowerCase() === requestedPlayer.toLowerCase()) || requestedPlayer;
+                    activePlayerUid.value = 'cloud_' + matched;
+                    playerSearchQuery.value = matched;
+                    await switchPlayer();
+                } else {
+                    const lastUid = localStorage.getItem('wt_active_uid');
+                    if (lastUid && lastUid.startsWith('cloud_')) {
+                        const nickname = lastUid.replace('cloud_', '');
+                        if (cloudPlayers.value.includes(nickname)) {
+                            activePlayerUid.value = lastUid;
+                            playerSearchQuery.value = nickname;
+                            await switchPlayer();
+                        }
+                    } else if (cloudPlayers.value.length > 0) {
+                        selectPlayer(cloudPlayers.value[0]);
+                    }
+                }
+
+                // 2. Главная вкладка
+                const tabParam = urlParams.get('tab');
+                if (tabParam === 'tournaments' || tabParam === 'tour') {
+                    activeMainTab.value = 'tournaments';
+                } else if (tabParam === 'squadron') {
+                    activeMainTab.value = 'squadron';
+                }
+
+                // 3. Под-режим (Сквад / СРБ / Мульти)
+                const modeParam = urlParams.get('mode') || urlParams.get('m');
+                if (modeParam && ['squad', 'squadron', 'multi'].includes(modeParam)) {
+                    filters.mode = modeParam;
+                }
+
+                // 4. Параметры режима «Сквад»
+                const subParam = urlParams.get('sub');
+                if (subParam && ['solo', 'team'].includes(subParam)) {
+                    squadSubMode.value = subParam;
+                }
+
+                const typeParam = urlParams.get('type');
+                if (typeParam === 'air' || typeParam === 'air_rb') {
+                    squadBattleType.value = 'air_rb';
+                } else if (typeParam === 'ground' || typeParam === 'ground_rb' || typeParam === 'tank') {
+                    squadBattleType.value = 'ground_rb';
+                }
+
+                const brParam = urlParams.get('br');
+                if (brParam) {
+                    const parsedBr = parseFloat(brParam);
+                    if (!isNaN(parsedBr) && parsedBr >= 1.0 && parsedBr <= 15.0) {
+                        squadTargetBr.value = Math.round(parsedBr * 10) / 10;
+                    }
+                }
+
+                const focusParam = urlParams.get('focus');
+                if (focusParam && ['all', 'tanks', 'air'].includes(focusParam)) {
+                    squadTeamFocus.value = focusParam;
+                }
+
+                const nationParam = urlParams.get('nation');
+                if (nationParam) {
+                    squadNation.value = nationParam;
+                }
+
+                const squadParam = urlParams.get('squad');
+                if (squadParam) {
+                    const members = squadParam.split(',').map(s => s.trim()).filter(Boolean);
+                    squadExtraMembers.value = ['', '', ''];
+                    for (let i = 0; i < Math.min(members.length, 3); i++) {
+                        const m = members[i];
+                        const matched = cloudPlayers.value.find(p => p.toLowerCase() === m.toLowerCase()) || m;
+                        squadExtraMembers.value[i] = matched;
+                        ensurePlayerProfile(matched);
+                    }
+                }
+
+                // 5. Параметры СРБ (Полковые)
+                const srbViewParam = urlParams.get('srb_view');
+                if (srbViewParam && ['table', 'profile_analysis'].includes(srbViewParam)) {
+                    srbViewMode.value = srbViewParam;
+                }
+                const srbBrParam = urlParams.get('srb_br');
+                if (srbBrParam) {
+                    const parsed = parseFloat(srbBrParam);
+                    if (!isNaN(parsed)) selectedSrbBracket.value = parsed;
+                }
+                const brsParam = urlParams.get('brs');
+                if (brsParam) {
+                    filters.brs = brsParam.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+                }
+
+                // 6. Параметры Турниров TSS
+                const tourTypeParam = urlParams.get('tour_type');
+                if (tourTypeParam && ['tank', 'air'].includes(tourTypeParam)) {
+                    filters.tourType = tourTypeParam;
+                }
+                const tourPresetParam = urlParams.get('tour_preset');
+                if (tourPresetParam) {
+                    filters.tourPresetId = tourPresetParam;
+                }
+                const tourQParam = urlParams.get('tour_q');
+                if (tourQParam) {
+                    tourSearchQuery.value = tourQParam;
+                }
+
+                // 7. Общие фильтры
+                if (urlParams.get('hidden') === '1') {
+                    filters.showHidden = true;
+                }
+                if (urlParams.get('search')) {
+                    filters.search = urlParams.get('search');
+                }
+
+                isInitializing.value = false;
+                updateUrlParams();
             };
 
             const playerStats = computed(() => {
@@ -2376,7 +2738,7 @@
                 switchPlayer();
             };
 
-            const switchPlayer = () => {
+            const switchPlayer = async () => {
                 const uid = activePlayerUid.value;
                 if (!uid) return;
 
@@ -2384,17 +2746,21 @@
                     const nickname = uid.replace('cloud_', '');
                     playerLoaded.value = false;
                     
-                    fetch(`players/${nickname}.json?t=` + Date.now())
-                        .then(res => { if (!res.ok) throw new Error("Документ не найден"); return res.json(); })
-                        .then(data => {
-                            savedProfiles.value[uid] = {
-                                SpadeInfo: data.SpadeInfo || data,
-                                Basics: data.Basics || { nickname: nickname, SquadronName: 'ПОЛК', uid: '' }
-                            };
-                            playerLoaded.value = true;
-                            localStorage.setItem('wt_active_uid', uid);
-                        })
-                        .catch(err => { alert(`Ошибка загрузки: ${err.message}`); playerLoaded.value = false; activePlayerUid.value = ''; });
+                    if (savedProfiles.value[uid]) {
+                        playerLoaded.value = true;
+                        localStorage.setItem('wt_active_uid', uid);
+                        return;
+                    }
+
+                    const profile = await ensurePlayerProfile(nickname);
+                    if (profile) {
+                        playerLoaded.value = true;
+                        localStorage.setItem('wt_active_uid', uid);
+                    } else {
+                        console.warn(`Профиль ${nickname} пока недоступен или еще не выгружен.`);
+                        playerLoaded.value = false;
+                        activePlayerUid.value = '';
+                    }
                 }
             };
 
@@ -2505,7 +2871,8 @@
                 squadExtraMembers, squadSlotQueries, activeSquadSuggestIndex, getFilteredSquadMembers, selectSquadMember, activeSquadMembersList, squadTeamFocus, isMemberAlreadyInSquad, onSquadMemberSelected, removeSquadMemberSlot, teamComparisonResults,
                 srbViewMode, srbBracketsAnalysis, selectedSrbBracket, selectedSrbRoster,
                 tourSearchQuery, filteredTournamentUnits, tournamentStats,
-                loadGlobalDbManual, toggleBr, resetBrs, resetNations, switchPlayer, selectPlayer
+                loadGlobalDbManual, toggleBr, resetBrs, resetNations, switchPlayer, selectPlayer,
+                copyShareLink, copiedRecently, toastMessage, updateUrlParams
             };
         }
     }).mount('#app');
