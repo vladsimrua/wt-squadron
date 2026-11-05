@@ -325,6 +325,33 @@
                                 <button @click="squadTeamFocus = 'air'" :class="squadTeamFocus === 'air' ? 'bg-cyan-500 text-black font-bold' : 'text-slate-400'" class="py-1 rounded text-center transition cursor-pointer">✈️ Летка</button>
                             </div>
                         </div>
+
+                        <!-- Нации отряда (выбор до 3 наций) -->
+                        <div class="mt-2 pt-2 border-t border-slate-800">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-400">Нации отряда (до 3):</label>
+                                <span class="text-[9px] font-mono" :class="squadSelectedNations.length > 0 ? 'text-cyan-400 font-bold' : 'text-slate-500'">
+                                    {{ squadSelectedNations.length > 0 ? `${squadSelectedNations.length}/3 наций` : 'Все нации' }}
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-1 max-h-36 overflow-y-auto pr-0.5">
+                                <button 
+                                    v-for="(nLabel, nKey) in nationsMap" 
+                                    :key="nKey"
+                                    @click="toggleSquadNation(nKey)"
+                                    :class="squadSelectedNations.includes(nKey) ? 'bg-cyan-950/80 border-cyan-500 text-cyan-300 font-bold shadow-sm' : 'bg-slate-950/80 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-900'"
+                                    class="border rounded-lg py-1 px-1.5 text-[10px] transition cursor-pointer text-left flex items-center justify-between"
+                                >
+                                    <span class="truncate">{{ nationsDecorated[nKey]?.split(' ')[0] }} {{ nLabel }}</span>
+                                    <span v-if="squadSelectedNations.includes(nKey)" class="text-[9px] text-cyan-400 font-mono">✓</span>
+                                </button>
+                            </div>
+                            <div v-if="squadSelectedNations.length > 0" class="mt-1 flex justify-end">
+                                <button @click="squadSelectedNations = []" class="text-[9px] text-slate-500 hover:text-rose-400 transition cursor-pointer">
+                                    ↺ Сбросить (все 10 наций)
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1028,157 +1055,323 @@
                         </div>
                     </template>
 
-                    <!-- ---------------------------------------------------- -->
-                    <!-- ПОДРЕЖИМ Б: СРАВНЕНИЕ ПО ОТРИДУ (2-4 БОЙЦА)           -->
+                                        <!-- ---------------------------------------------------- -->
+                    <!-- ПОДРЕЖИМ Б: СРАВНЕНИЕ И НАСТРОЙКА ОТРИДА (2-4 БОЙЦА) -->
                     <!-- ---------------------------------------------------- -->
                     <template v-else-if="squadSubMode === 'team'">
                         <!-- Шапка режима Отряда -->
-                        <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 mb-5 flex flex-wrap items-center justify-between gap-4">
+                        <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 mb-4 flex flex-wrap items-center justify-between gap-4">
                             <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-lg font-black">
+                                <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-lg font-black shrink-0">
                                     👥
                                 </div>
                                 <div>
                                     <h2 class="text-sm font-black text-slate-200 flex items-center gap-2">
-                                        <span>Сравнение сетапов отряда на БР {{ squadTargetBr.toFixed(1) }}</span>
+                                        <span>Сквад: подбор сетапов на БР {{ squadTargetBr.toFixed(1) }}</span>
                                         <span class="bg-cyan-950 border border-cyan-800 text-cyan-300 text-[10px] font-mono px-2 py-0.5 rounded font-bold">
                                             {{ squadBattleType === 'air_rb' ? 'Летка РБ (по 1 самолету)' : 'Танки РБ (Смешанный бой)' }}
                                         </span>
                                     </h2>
                                     <p class="text-[11px] text-slate-400 mt-0.5">
-                                        Анализ совместимости техники: на каких нациях отряд укомплектован для моментального старта в бой.
+                                        Индивидуальный выбор наций бойцам, детальные карточки техники с рисунком типа и ручная замена машин.
                                     </p>
                                 </div>
                             </div>
 
-                            <div class="flex items-center gap-2">
-                                <div class="bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl text-xs font-mono text-slate-300">
-                                    Отряд: <span class="text-cyan-400 font-bold">{{ activeSquadMembersList.join(' + ') }}</span>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <!-- Переключатель вида: Сборный отряд vs По нациям -->
+                                <div class="flex bg-slate-950 p-1 border border-slate-800 rounded-xl shrink-0">
+                                    <button 
+                                        @click="squadTeamViewMode = 'combined'" 
+                                        :class="squadTeamViewMode === 'combined' ? 'bg-cyan-500 text-black font-black shadow-md' : 'text-slate-400 hover:text-slate-200'"
+                                        class="px-3 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center gap-1.5"
+                                    >
+                                        <span>👥</span>
+                                        <span>Сборный отряд</span>
+                                    </button>
+                                    <button 
+                                        @click="squadTeamViewMode = 'by_nations'" 
+                                        :class="squadTeamViewMode === 'by_nations' ? 'bg-cyan-500 text-black font-black shadow-md' : 'text-slate-400 hover:text-slate-200'"
+                                        class="px-3 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center gap-1.5"
+                                    >
+                                        <span>🌐</span>
+                                        <span>По нациям</span>
+                                    </button>
                                 </div>
+
                                 <button 
                                     @click="copyShareLink" 
-                                    class="bg-cyan-500 hover:bg-cyan-400 text-black font-black px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.4)] cursor-pointer"
-                                    title="Скопировать ссылку на этот отряд со всеми бойцами и БР"
+                                    class="bg-cyan-500 hover:bg-cyan-400 text-black font-black px-3.5 py-1.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.4)] cursor-pointer shrink-0"
+                                    title="Скопировать ссылку на этот отряд со всеми бойцами, нациями и БР"
                                 >
-                                    <span>{{ copiedRecently ? '✓ Скопировано' : '🔗 Поделиться отрядом' }}</span>
+                                    <span>{{ copiedRecently ? '✓ Скопировано' : '🔗 Поделиться' }}</span>
                                 </button>
                             </div>
                         </div>
 
-                        <!-- СВОДНЫЕ РЕЗУЛЬТАТЫ СОВМЕСТИМОСТИ ОТРИДА ПО НАЦИЯМ -->
-                        <div class="flex flex-col gap-4">
-                            <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">
-                                    Готовность отряда ({{ activeSquadMembersList.length }} чел.) по нациям на БР {{ squadTargetBr.toFixed(1) }}:
+                        <!-- Быстрый выбор наций для отряда (до 3 наций) -->
+                        <div class="bg-slate-900/30 border border-slate-800/80 rounded-2xl p-3.5 mb-5 flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                                    <span>🚩</span>
+                                    <span>Нации отряда (выберите до 3):</span>
                                 </span>
-                                <span class="text-[11px] text-slate-500">
-                                    {{ teamComparisonResults.filter(r => r.readyCount === activeSquadMembersList.length).length }} наций готовы на 100%
+                                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full" :class="squadSelectedNations.length > 0 ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold' : 'bg-slate-950 text-slate-500 border border-slate-800'">
+                                    {{ squadSelectedNations.length > 0 ? `${squadSelectedNations.length} из 3 выбрано` : 'Все 10 наций активны' }}
                                 </span>
                             </div>
 
-                            <!-- Сетка наций для отряда -->
-                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <div 
-                                    v-for="tc in teamComparisonResults" 
-                                    :key="tc.country"
-                                    :class="tc.readyCount === activeSquadMembersList.length ? 'border-emerald-500/50 bg-emerald-950/10' : (tc.readyCount > 0 ? 'border-amber-500/30 bg-amber-950/5' : 'border-slate-800/80 bg-slate-900/10 opacity-60')"
-                                    class="border rounded-2xl p-4 flex flex-col gap-3.5 transition"
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <button 
+                                    v-for="(nLabel, nKey) in nationsMap" 
+                                    :key="nKey"
+                                    @click="toggleSquadNation(nKey)"
+                                    :class="squadSelectedNations.includes(nKey) ? 'bg-cyan-500 text-black font-black shadow-md border-cyan-400' : 'bg-slate-950 hover:bg-slate-800 border-slate-800 text-slate-400 hover:text-slate-200'"
+                                    class="border px-2.5 py-1 rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5"
                                 >
-                                    <!-- Заголовок нации в отряде -->
-                                    <div class="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-lg">{{ nationsDecorated[tc.country]?.split(' ')[0] || '🚩' }}</span>
+                                    <span>{{ nationsDecorated[nKey]?.split(' ')[0] }}</span>
+                                    <span>{{ nLabel }}</span>
+                                </button>
+                                <button 
+                                    v-if="squadSelectedNations.length > 0" 
+                                    @click="squadSelectedNations = []" 
+                                    class="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-rose-400 hover:text-rose-300 px-2.5 py-1 rounded-xl text-xs transition cursor-pointer ml-1 font-medium"
+                                    title="Сбросить фильтр и показывать все нации"
+                                >
+                                    ✕ Сброс
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ---------------------------------------------------- -->
+                        <!-- ВИД 1: СБОРНЫЙ ОТРЯД (ИНДИВИДУАЛЬНЫЕ НАЦИИ БОЙЦОВ)   -->
+                        <!-- ---------------------------------------------------- -->
+                        <div v-if="squadTeamViewMode === 'combined'" class="flex flex-col gap-5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">
+                                    Боевой состав отряда ({{ activeSquadMembersList.length }} бойцов) на БР {{ squadTargetBr.toFixed(1) }}:
+                                </span>
+                                <span class="text-[11px] text-slate-500">
+                                    {{ combinedSquadData.filter(m => m.isReady).length }} из {{ combinedSquadData.length }} бойцов укомплектованы на 100%
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                                <div 
+                                    v-for="member in combinedSquadData" 
+                                    :key="member.name"
+                                    class="border rounded-3xl p-5 flex flex-col gap-4 transition shadow-lg"
+                                    :class="member.isReady ? 'border-emerald-500/40 bg-emerald-950/10' : 'border-slate-800 bg-slate-900/20'"
+                                >
+                                    <!-- Шапка карточки бойца -->
+                                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-3.5">
+                                        <div class="flex items-center gap-3">
+                                            <span class="w-3 h-3 rounded-full shrink-0" :class="member.isReady ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.7)]' : 'bg-rose-500'"></span>
                                             <div>
-                                                <span class="text-sm font-black text-slate-200">
-                                                    {{ nationsMap[tc.country] || tc.country }}
+                                                <div class="text-sm font-black text-slate-100 flex items-center gap-2">
+                                                    <span>{{ member.name }}</span>
+                                                    <span v-if="member.name === (playerBasics ? playerBasics.nickname : '')" class="text-[10px] font-mono text-cyan-400 bg-cyan-950 border border-cyan-800 px-1.5 py-0.5 rounded font-bold">Лидер</span>
+                                                </div>
+                                                <div class="text-[10px] font-mono text-slate-400 mt-0.5 flex items-center gap-1.5">
+                                                    <span>Нация: <strong class="text-slate-200">{{ member.countryName }}</strong></span>
+                                                    <span>•</span>
+                                                    <span :class="member.isReady ? 'text-emerald-400 font-bold' : 'text-rose-400'">{{ member.isReady ? '✓ Готов к бою' : '🔒 Не укомплектован' }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Переключатель нации бойца -->
+                                        <div class="flex items-center gap-1.5 bg-slate-950 p-1 border border-slate-800 rounded-xl">
+                                            <span class="text-[10px] text-slate-500 font-bold px-1.5 uppercase">Нация:</span>
+                                            <select 
+                                                :value="member.country" 
+                                                @change="setPlayerNation(member.name, $event.target.value)"
+                                                class="bg-slate-900 border border-slate-700 text-cyan-300 text-xs font-bold py-1 px-2 rounded-lg outline-none cursor-pointer"
+                                            >
+                                                <option 
+                                                    v-for="cKey in availableSquadNationKeys" 
+                                                    :key="cKey" 
+                                                    :value="cKey"
+                                                >
+                                                    {{ nationsDecorated[cKey] || nationsMap[cKey] }}
+                                                </option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <!-- Крупные карточки машин бойца -->
+                                    <div v-if="member.units.length > 0" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div 
+                                            v-for="unit in member.units" 
+                                            :key="unit.id + '_' + unit.slotKey"
+                                            class="bg-slate-950/90 border border-slate-800/90 hover:border-cyan-500/50 rounded-2xl p-3 flex flex-col justify-between gap-2.5 transition group shadow-md"
+                                        >
+                                            <!-- Верх: Бейдж типа техники с рисунком и БР -->
+                                            <div class="flex items-center justify-between gap-1 text-[11px]">
+                                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-bold border text-[10px]" :class="unit.typeInfo.badgeClass">
+                                                    <span>{{ unit.typeInfo.icon }}</span>
+                                                    <span>{{ unit.typeInfo.name }}</span>
                                                 </span>
+                                                <span class="font-mono font-bold text-slate-200 bg-slate-900 px-2 py-0.5 rounded border border-slate-800 text-[10px]">
+                                                    БР {{ unit.br.toFixed(1) }}
+                                                </span>
+                                            </div>
+
+                                            <!-- Центр: Спрайт + Название -->
+                                            <div class="flex items-center gap-3 my-0.5">
+                                                <a :href="'https://wiki.warthunder.ru/unit/' + unit.id" target="_blank" class="shrink-0 group/img relative" title="Открыть Wiki">
+                                                    <img 
+                                                        :src="'https://static.encyclopedia.warthunder.com/slots/' + unit.id + '.png'" 
+                                                        class="h-12 w-24 object-contain bg-slate-900/90 p-1 rounded-xl border border-slate-800 group-hover/img:border-cyan-400 transition shadow-inner" 
+                                                        loading="lazy" 
+                                                        @error="$event.target.style.display='none'"
+                                                    >
+                                                </a>
+                                                <div class="min-w-0 flex-1">
+                                                    <a :href="'https://wiki.warthunder.ru/unit/' + unit.id" target="_blank" class="text-xs font-black text-slate-100 hover:text-cyan-400 hover:underline transition truncate block">
+                                                        {{ unit.name }}
+                                                    </a>
+                                                    <div class="text-[10px] font-mono text-slate-500 truncate mt-0.5 flex items-center gap-1.5">
+                                                        <span class="truncate">{{ unit.id }}</span>
+                                                        <span v-if="unit.rank" class="text-slate-400 font-sans">Ранг {{ romanRanks[unit.rank] || unit.rank }}</span>
+                                                    </div>
+                                                    <div class="mt-1 flex items-center gap-1.5">
+                                                        <span v-if="unit.status === 2" class="text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                                                            ♠ В пиках
+                                                        </span>
+                                                        <span v-else-if="unit.status === 1" class="text-amber-400 bg-amber-500/10 border border-amber-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                                                            ✓ Открыта
+                                                        </span>
+                                                        <span v-else class="text-rose-400 bg-rose-500/10 border border-rose-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                                                            🔒 Не прокачана
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Нижняя кнопка: Заменить машину -->
+                                            <button 
+                                                @click="openSwapModal(member.name, member.country, unit.slotKey, unit.slotTitle, unit.id)"
+                                                class="w-full py-1.5 px-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 text-[10px] text-slate-400 hover:text-cyan-300 font-medium rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                            >
+                                                <span>⇄</span>
+                                                <span>Заменить машину</span>
+                                                <span v-if="isSlotCustomized(member.name, member.country, unit.slotKey)" class="text-cyan-400 font-bold" title="Слот изменен вручную">•</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div v-else class="py-8 text-center text-xs text-rose-400 bg-rose-950/10 rounded-2xl border border-dashed border-rose-900/40">
+                                        ⚠️ Нет прокачанной техники в вилке [{{ squadMinBr.toFixed(1) }} — {{ squadTargetBr.toFixed(1) }}] для нации {{ member.countryName }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ---------------------------------------------------- -->
+                        <!-- ВИД 2: СРАВНЕНИЕ ПО НАЦИЯМ (ВСЕ НА ОДНОЙ НАЦИИ)      -->
+                        <!-- ---------------------------------------------------- -->
+                        <div v-else class="flex flex-col gap-5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">
+                                    Готовность отряда по нациям ({{ activeSquadMembersList.length }} бойцов) на БР {{ squadTargetBr.toFixed(1) }}:
+                                </span>
+                                <span class="text-[11px] text-slate-500">
+                                    {{ filteredTeamComparisonResults.filter(r => r.readyCount === activeSquadMembersList.length).length }} из {{ filteredTeamComparisonResults.length }} наций готовы на 100%
+                                </span>
+                            </div>
+
+                            <!-- Сетка наций -->
+                            <div class="flex flex-col gap-5">
+                                <div 
+                                    v-for="tc in filteredTeamComparisonResults" 
+                                    :key="tc.country"
+                                    class="border rounded-3xl p-5 flex flex-col gap-4 transition shadow-lg"
+                                    :class="tc.readyCount === activeSquadMembersList.length ? 'border-emerald-500/50 bg-emerald-950/10' : (tc.readyCount > 0 ? 'border-amber-500/30 bg-amber-950/5' : 'border-slate-800/80 bg-slate-900/10 opacity-60')"
+                                >
+                                    <!-- Заголовок нации -->
+                                    <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                                        <div class="flex items-center gap-2.5">
+                                            <span class="text-2xl">{{ nationsDecorated[tc.country]?.split(' ')[0] || '🚩' }}</span>
+                                            <div>
+                                                <div class="text-base font-black text-slate-100 flex items-center gap-2">
+                                                    <span>{{ nationsMap[tc.country] || tc.country }}</span>
+                                                    <span class="text-xs text-slate-500 font-mono">БР {{ squadTargetBr.toFixed(1) }}</span>
+                                                </div>
                                             </div>
                                         </div>
                                         <div>
                                             <span 
                                                 :class="tc.readyCount === activeSquadMembersList.length ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-bold' : (tc.readyCount > 0 ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 'bg-slate-900 border-slate-800 text-slate-500')"
-                                                class="border px-2.5 py-0.5 rounded-full text-[11px] font-mono"
+                                                class="border px-3 py-1 rounded-full text-xs font-mono"
                                             >
                                                 {{ tc.readyCount }} из {{ activeSquadMembersList.length }} готовы {{ tc.readyCount === activeSquadMembersList.length ? '🚀 В бой!' : '' }}
                                             </span>
                                         </div>
                                     </div>
 
-                                    <!-- Список членов отряда для этой нации -->
-                                    <div class="flex flex-col gap-2">
+                                    <!-- Бойцы в этой нации -->
+                                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                         <div 
                                             v-for="m in tc.members" 
                                             :key="m.name"
-                                            class="bg-slate-950/80 border border-slate-800/80 rounded-xl p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs"
+                                            class="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-4 flex flex-col gap-3"
                                         >
-                                            <div class="flex items-center gap-2 min-w-0 shrink-0">
-                                                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="m.isReady ? 'bg-emerald-400' : 'bg-rose-500'"></span>
-                                                <span class="font-bold text-slate-200 truncate">{{ m.name }}</span>
-                                                <span v-if="m.isReady" class="text-[9px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-900/60 px-1 rounded">
-                                                    {{ squadBattleType === 'air_rb' || squadTeamFocus === 'air' ? `${m.airVariations.length} л` : `${m.groundSetup.length}/3 м` }}
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="w-2 h-2 rounded-full" :class="m.isReady ? 'bg-emerald-400' : 'bg-rose-500'"></span>
+                                                    <span class="font-black text-slate-200 text-xs">{{ m.name }}</span>
+                                                </div>
+                                                <span v-if="m.isReady" class="text-[9px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-900/60 px-1.5 py-0.5 rounded font-bold">
+                                                    {{ m.units.length }} машин в сетапе
                                                 </span>
+                                                <span v-else class="text-[9px] text-rose-400 font-medium">Не укомплектован</span>
                                             </div>
 
-                                            <!-- Роль и назначенная техника игрока -->
-                                            <div class="flex flex-wrap items-center gap-1.5 text-[10px] font-mono">
-                                                <!-- 1. РЕЖИМ: ЛЕТКА РБ (ИЛИ ФОКУС ЛЕТКА) -> ВАРИАЦИИ САМОЛЕТОВ -->
-                                                <template v-if="squadBattleType === 'air_rb' || squadTeamFocus === 'air'">
-                                                    <template v-if="m.airVariations && m.airVariations.length > 0">
-                                                        <span 
-                                                            v-for="p in m.airVariations" 
-                                                            :key="p.id" 
-                                                            class="bg-sky-950/60 border border-sky-900 px-2 py-0.5 rounded text-sky-300 flex items-center gap-1 truncate max-w-[210px]" 
-                                                            :title="p.name + ' (' + p.roleTitle + ', БР ' + p.br.toFixed(1) + ')'"
+                                            <!-- Крупные карточки техники бойца в этой нации -->
+                                            <div v-if="m.units.length > 0" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                                <div 
+                                                    v-for="unit in m.units" 
+                                                    :key="unit.id + '_' + unit.slotKey"
+                                                    class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 flex flex-col justify-between gap-2 group shadow-sm"
+                                                >
+                                                    <div class="flex items-center justify-between text-[9px]">
+                                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-bold border" :class="unit.typeInfo.badgeClass">
+                                                            <span>{{ unit.typeInfo.icon }}</span>
+                                                            <span>{{ unit.typeInfo.short }}</span>
+                                                        </span>
+                                                        <span class="font-mono font-bold text-slate-300 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
+                                                            БР {{ unit.br.toFixed(1) }}
+                                                        </span>
+                                                    </div>
+                                                    <div class="flex items-center gap-2 my-0.5">
+                                                        <img 
+                                                            :src="'https://static.encyclopedia.warthunder.com/slots/' + unit.id + '.png'" 
+                                                            class="h-10 w-20 object-contain bg-slate-950/80 p-0.5 rounded-lg border border-slate-800 shrink-0" 
+                                                            loading="lazy" 
+                                                            @error="$event.target.style.display='none'"
                                                         >
-                                                            <span class="text-[9px] text-sky-400 font-bold uppercase">{{ p.icon }} {{ p.roleShort }}:</span>
-                                                            <span class="truncate">{{ p.name }}</span>
-                                                            <span class="font-bold" :class="p.status === 2 ? 'text-emerald-400' : 'text-sky-300'">
-                                                                {{ p.br.toFixed(1) }}{{ p.status === 2 ? '♠' : '' }}
-                                                            </span>
-                                                        </span>
-                                                        <span v-if="m.totalAirCount > m.airVariations.length" class="text-[9px] text-slate-500 font-bold bg-slate-900 px-1 py-0.5 rounded border border-slate-800" :title="'Всего ' + m.totalAirCount + ' самолетов в вилке'">
-                                                            +{{ m.totalAirCount - m.airVariations.length }}
-                                                        </span>
-                                                    </template>
-                                                    <span v-else class="text-rose-400 font-sans font-medium text-[10px]">
-                                                        Нет самолета в вилке
-                                                    </span>
-                                                </template>
-
-                                                <!-- 2. РЕЖИМ: ТАНКИ РБ (ВСЕ ИЛИ ТАНКИ) -> СЕТАП ИЗ 3 МАШИН -->
-                                                <template v-else>
-                                                    <template v-if="m.groundSetup && m.groundSetup.length > 0">
-                                                        <span 
-                                                            v-for="unit in m.groundSetup" 
-                                                            :key="unit.id"
-                                                            :class="unit.slotType === 'ЗСУ' ? 'bg-amber-950/60 border-amber-900 text-amber-300' : 'bg-slate-900 border-slate-800 text-slate-300'"
-                                                            class="border px-2 py-0.5 rounded flex items-center gap-1 truncate max-w-[170px]"
-                                                            :title="unit.name + ' (' + (unit.slotType === 'ЗСУ' ? 'ЗСУ' : 'Танк') + ', БР ' + unit.br.toFixed(1) + ')'"
-                                                        >
-                                                            <span class="text-[9px] text-slate-500 font-bold uppercase">{{ unit.icon }} {{ unit.slotType }}:</span>
-                                                            <span class="truncate">{{ unit.name }}</span>
-                                                            <span class="font-bold" :class="unit.status === 2 ? 'text-emerald-400' : 'text-slate-400'">
-                                                                {{ unit.br.toFixed(1) }}{{ unit.status === 2 ? '♠' : '' }}
-                                                            </span>
-                                                        </span>
-
-                                                        <!-- Если фокус Все и есть самолет в ТРБ -->
-                                                        <span 
-                                                            v-if="squadTeamFocus === 'all' && m.bestAir" 
-                                                            class="bg-sky-950/60 border border-sky-900 text-sky-300 border px-2 py-0.5 rounded flex items-center gap-1 truncate max-w-[170px]"
-                                                            :title="m.bestAir.name + ' (Авиация ТРБ, БР ' + m.bestAir.br.toFixed(1) + ')'"
-                                                        >
-                                                            <span class="text-[9px] text-sky-400 font-bold uppercase">✈️ АВИА:</span>
-                                                            <span class="truncate">{{ m.bestAir.name }}</span>
-                                                            <span class="font-bold text-sky-400">
-                                                                {{ m.bestAir.br.toFixed(1) }}{{ m.bestAir.status === 2 ? '♠' : '' }}
-                                                            </span>
-                                                        </span>
-                                                    </template>
-                                                    <span v-else class="text-rose-400 font-sans font-medium text-[10px]">
-                                                        Нет техники в вилке
-                                                    </span>
-                                                </template>
+                                                        <div class="min-w-0 flex-1">
+                                                            <a :href="'https://wiki.warthunder.ru/unit/' + unit.id" target="_blank" class="text-xs font-black text-slate-100 hover:text-cyan-400 hover:underline truncate block">
+                                                                {{ unit.name }}
+                                                            </a>
+                                                            <div class="text-[9px] font-mono text-slate-500 truncate mt-0.5 flex items-center gap-1">
+                                                                <span class="truncate">{{ unit.id }}</span>
+                                                                <span v-if="unit.status === 2" class="text-emerald-400 font-bold">♠</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <button 
+                                                        @click="openSwapModal(m.name, tc.country, unit.slotKey, unit.slotTitle, unit.id)"
+                                                        class="w-full py-1 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 text-[9px] text-slate-400 hover:text-cyan-300 rounded transition flex items-center justify-center gap-1 cursor-pointer"
+                                                    >
+                                                        <span>⇄</span>
+                                                        <span>Заменить</span>
+                                                        <span v-if="isSlotCustomized(m.name, tc.country, unit.slotKey)" class="text-cyan-400 font-bold">•</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div v-else class="text-center text-xs text-slate-500 py-3 bg-slate-900/40 rounded-xl border border-dashed border-slate-800">
+                                                Нет техники в вилке
                                             </div>
                                         </div>
                                     </div>
@@ -1554,7 +1747,186 @@
         </main>
     </div>
 
-    <!-- ВСПЛЫВАЮЩЕЕ УВЕДОМЛЕНИЕ О КОПИРОВАНИИ ССЫЛКИ (TOAST) -->
+        <!-- МОДАЛЬНОЕ ОКНО ЗАМЕНЫ МАШИНЫ В СЛОТЕ -->
+    <transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+    >
+        <div 
+            v-if="activeSwapModal.isOpen" 
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+            @click.self="closeSwapModal"
+        >
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+                <!-- Шапка модалки -->
+                <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+                    <div>
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                            <span>⇄ Замена машины в слоте</span>
+                            <span>•</span>
+                            <span class="text-slate-400">{{ activeSwapModal.slotTitle }}</span>
+                        </div>
+                        <h3 class="text-sm font-black text-slate-100 mt-0.5 flex items-center gap-2">
+                            <span>Боец: <span class="text-cyan-400">{{ activeSwapModal.nickname }}</span></span>
+                            <span>•</span>
+                            <span>{{ nationsDecorated[activeSwapModal.country] || activeSwapModal.country }}</span>
+                            <span class="text-xs font-mono font-bold bg-slate-900 border border-slate-800 text-slate-300 px-2 py-0.5 rounded">
+                                БР {{ squadMinBr.toFixed(1) }} — {{ squadTargetBr.toFixed(1) }}
+                            </span>
+                        </h3>
+                    </div>
+                    <button @click="closeSwapModal" class="text-slate-400 hover:text-white p-2 text-base rounded-xl hover:bg-slate-800 transition cursor-pointer">
+                        ✕
+                    </button>
+                </div>
+
+                <!-- Фильтры и поиск в модалке -->
+                <div class="p-4 border-b border-slate-800/80 bg-slate-950/30 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                        <button 
+                            @click="activeSwapModal.filterType = 'all'"
+                            :class="activeSwapModal.filterType === 'all' ? 'bg-cyan-500 text-black font-black' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border-slate-800'"
+                            class="border px-2.5 py-1 rounded-lg transition cursor-pointer"
+                        >
+                            Все ({{ swapModalAlternatives.length }})
+                        </button>
+                        <button 
+                            @click="activeSwapModal.filterType = 'tank'"
+                            :class="activeSwapModal.filterType === 'tank' ? 'bg-cyan-500 text-black font-black' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border-slate-800'"
+                            class="border px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1"
+                        >
+                            <span>🛡️</span>
+                            <span>Танки</span>
+                        </button>
+                        <button 
+                            @click="activeSwapModal.filterType = 'spg'"
+                            :class="activeSwapModal.filterType === 'spg' ? 'bg-cyan-500 text-black font-black' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border-slate-800'"
+                            class="border px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1"
+                        >
+                            <span>🎯</span>
+                            <span>САУ</span>
+                        </button>
+                        <button 
+                            @click="activeSwapModal.filterType = 'spaa'"
+                            :class="activeSwapModal.filterType === 'spaa' ? 'bg-cyan-500 text-black font-black' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border-slate-800'"
+                            class="border px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1"
+                        >
+                            <span>📡</span>
+                            <span>ЗСУ</span>
+                        </button>
+                        <button 
+                            @click="activeSwapModal.filterType = 'fighter'"
+                            :class="activeSwapModal.filterType === 'fighter' ? 'bg-cyan-500 text-black font-black' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border-slate-800'"
+                            class="border px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1"
+                        >
+                            <span>✈️</span>
+                            <span>Ястребы</span>
+                        </button>
+                        <button 
+                            @click="activeSwapModal.filterType = 'assault'"
+                            :class="activeSwapModal.filterType === 'assault' ? 'bg-cyan-500 text-black font-black' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border-slate-800'"
+                            class="border px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1"
+                        >
+                            <span>⚡</span>
+                            <span>Штурм / Бомбер</span>
+                        </button>
+                    </div>
+
+                    <input 
+                        type="text" 
+                        v-model="activeSwapModal.searchQuery" 
+                        placeholder="Поиск по названию..." 
+                        class="bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-lg px-2.5 py-1 text-xs text-slate-200 placeholder-slate-600 outline-none transition w-48"
+                    >
+                </div>
+
+                <!-- Список машин в модалке -->
+                <div class="p-4 overflow-y-auto max-h-[55vh] flex-1">
+                    <div v-if="swapModalAlternatives.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        <div 
+                            v-for="alt in swapModalAlternatives" 
+                            :key="alt.id"
+                            @click="selectModalSwapUnit(alt.id)"
+                            :class="alt.id === activeSwapModal.currentUnitId ? 'border-cyan-400 bg-cyan-950/20' : 'border-slate-800 bg-slate-950/60 hover:border-slate-600 hover:bg-slate-800/40'"
+                            class="border rounded-2xl p-3 flex flex-col justify-between gap-2.5 transition cursor-pointer group"
+                        >
+                            <!-- Верх: Бейдж типа и БР -->
+                            <div class="flex items-center justify-between text-[10px]">
+                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-bold border" :class="alt.typeInfo.badgeClass">
+                                    <span>{{ alt.typeInfo.icon }}</span>
+                                    <span>{{ alt.typeInfo.short }}</span>
+                                </span>
+                                <span class="font-mono font-bold text-slate-200 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
+                                    БР {{ alt.br.toFixed(1) }}
+                                </span>
+                            </div>
+
+                            <!-- Центр: Спрайт + Название -->
+                            <div class="flex items-center gap-2.5 my-1">
+                                <img 
+                                    :src="'https://static.encyclopedia.warthunder.com/slots/' + alt.id + '.png'" 
+                                    class="h-10 w-20 object-contain bg-slate-900 p-0.5 rounded-lg border border-slate-800 group-hover:border-cyan-400 transition shrink-0" 
+                                    loading="lazy" 
+                                    @error="$event.target.style.display='none'"
+                                >
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-xs font-black text-slate-100 group-hover:text-cyan-400 transition truncate">
+                                        {{ alt.name }}
+                                    </div>
+                                    <div class="text-[9px] font-mono text-slate-500 truncate mt-0.5">
+                                        {{ alt.id }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Низ: Статус готовности и кнопка выбора -->
+                            <div class="flex items-center justify-between pt-1 border-t border-slate-900">
+                                <span v-if="alt.status === 2" class="text-emerald-400 text-[10px] font-bold">
+                                    ♠ В пиках
+                                </span>
+                                <span v-else-if="alt.status === 1" class="text-amber-400 text-[10px] font-bold">
+                                    ✓ Открыта
+                                </span>
+                                <span v-else class="text-rose-400 text-[10px] font-bold">
+                                    🔒 Не прокачана
+                                </span>
+
+                                <span class="text-[10px] font-bold text-cyan-400 group-hover:underline">
+                                    Выбрать →
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="py-12 text-center text-xs text-slate-500">
+                        Нет машин, соответствующих критериям поиска в вилке БР
+                    </div>
+                </div>
+
+                <!-- Подвал модалки -->
+                <div class="p-4 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between">
+                    <button 
+                        @click="resetModalSwapUnit" 
+                        class="text-xs text-slate-400 hover:text-amber-300 transition flex items-center gap-1.5 cursor-pointer font-medium"
+                    >
+                        <span>↺</span>
+                        <span>Сбросить этот слот на автоподбор</span>
+                    </button>
+                    <button 
+                        @click="closeSwapModal" 
+                        class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-4 py-2 rounded-xl transition cursor-pointer"
+                    >
+                        Закрыть
+                    </button>
+                </div>
+            </div>
+        </div>
+    </transition>
+
+<!-- ВСПЛЫВАЮЩЕЕ УВЕДОМЛЕНИЕ О КОПИРОВАНИИ ССЫЛКИ (TOAST) -->
     <transition
         enter-active-class="transition duration-300 ease-out transform"
         enter-from-class="opacity-0 translate-y-6 scale-95"
@@ -1608,6 +1980,28 @@
             const activeMainTab = ref('squadron');
 
             // Режим Сквада: 'solo' (Соло) | 'team' (Отряд 2-4)
+            // Выбор до 3 наций для отряда
+            const squadSelectedNations = ref([]);
+            // Индивидуальные нации для бойцов отряда: { [nickname]: countryKey }
+            const squadPlayerNations = reactive({});
+            // Режим отображения отряда: 'combined' (Сборный отряд) | 'by_nations' (По нациям)
+            const squadTeamViewMode = ref('combined');
+            // Ручные перевыборы техники в слотах бойцов: { [`${nickname}_${country}_${slotKey}`]: vehicleId }
+            const squadMemberCustomSlots = reactive({});
+            // Состояние модального окна замены техники
+            const activeSwapModal = reactive({
+                isOpen: false,
+                nickname: '',
+                country: '',
+                slotKey: '',
+                slotTitle: '',
+                currentUnitId: '',
+                filterType: 'all',
+                searchQuery: ''
+            });
+
+            const romanRanks = { 1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI', 7: 'VII', 8: 'VIII', 9: 'IX' };
+
             const squadSubMode = ref('solo');
             // Тип боя в Скваде: 'ground_rb' (Танки РБ — сетап) | 'air_rb' (Летка РБ — 1 самолет)
             const squadBattleType = ref('ground_rb');
@@ -1766,6 +2160,18 @@
                     }
 
                     if (filters.mode === 'squad') {
+                        if (squadSelectedNations.value.length > 0) {
+                            params.set('squad_nations', squadSelectedNations.value.join(','));
+                        }
+                        if (squadTeamViewMode.value !== 'combined') {
+                            params.set('squad_view', squadTeamViewMode.value);
+                        }
+                        const playerNationEntries = Object.entries(squadPlayerNations).filter(([n, c]) => n && c);
+                        if (playerNationEntries.length > 0) {
+                            const encodedPairs = playerNationEntries.map(([n, c]) => `${encodeURIComponent(n)}:${c}`).join(',');
+                            params.set('p_nat', encodedPairs);
+                        }
+
                         if (squadSubMode.value !== 'solo') params.set('sub', squadSubMode.value);
                         if (squadBattleType.value !== 'ground_rb') params.set('type', squadBattleType.value);
                         if (squadTargetBr.value) params.set('br', squadTargetBr.value.toFixed(1));
@@ -1856,6 +2262,10 @@
                 tourSearchQuery,
                 squadSubMode,
                 squadBattleType,
+                squadSelectedNations,
+                squadTeamViewMode,
+                squadPlayerNations,
+                squadMemberCustomSlots,
                 squadTargetBr,
                 squadNation,
                 squadTeamFocus,
@@ -2120,6 +2530,387 @@
             };
 
             // ========================================================
+            // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ И ДЕТАЛИЗАЦИЯ ТЕХНИКИ
+            // ========================================================
+            const getUnitTypeDetails = (meta) => {
+                if (!meta) return { name: 'Боевая машина', short: 'Техн', icon: '🛡️', badgeClass: 'bg-slate-800 text-slate-300 border-slate-700' };
+                if (meta.typeInfo) return meta.typeInfo;
+                const uClass = meta.unitClass || '';
+                const mType = meta.unitMoveType || '';
+
+                if (uClass === 'exp_fighter') {
+                    return { name: 'Истребитель', short: 'Ястреб', icon: '✈️', badgeClass: 'bg-sky-500/20 text-sky-300 border-sky-500/40' };
+                }
+                if (uClass === 'exp_assault') {
+                    return { name: 'Штурмовик', short: 'Штурм', icon: '⚡', badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/40' };
+                }
+                if (uClass === 'exp_bomber') {
+                    return { name: 'Бомбардировщик', short: 'Бомбер', icon: '💣', badgeClass: 'bg-rose-500/20 text-rose-300 border-rose-500/40' };
+                }
+                if (uClass === 'exp_helicopter' || mType === 'helicopter') {
+                    return { name: 'Вертолёт', short: 'Вертолёт', icon: '🚁', badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' };
+                }
+                if (uClass === 'exp_SPAA') {
+                    return { name: 'ЗСУ / ПВО', short: 'ЗСУ', icon: '📡', badgeClass: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' };
+                }
+                if (uClass === 'exp_tank_destroyer') {
+                    return { name: 'САУ / ПТ-САУ', short: 'САУ', icon: '🎯', badgeClass: 'bg-orange-500/20 text-orange-300 border-orange-500/40' };
+                }
+                if (uClass === 'exp_heavy_tank') {
+                    return { name: 'Тяжёлый танк', short: 'ТТ', icon: '🏰', badgeClass: 'bg-purple-500/20 text-purple-300 border-purple-500/40' };
+                }
+                if (uClass === 'exp_tank' || ['tank', 'heavy_tank', 'wheeled_vehicle'].includes(mType)) {
+                    return { name: 'Основной танк', short: 'ОБТ', icon: '🛡️', badgeClass: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' };
+                }
+                return { name: 'Боевая машина', short: 'Техн', icon: '🛡️', badgeClass: 'bg-slate-800 text-slate-300 border-slate-700' };
+            };
+
+            const toggleSquadNation = (countryKey) => {
+                const idx = squadSelectedNations.value.indexOf(countryKey);
+                if (idx >= 0) {
+                    squadSelectedNations.value.splice(idx, 1);
+                } else {
+                    if (squadSelectedNations.value.length < 3) {
+                        squadSelectedNations.value.push(countryKey);
+                    } else {
+                        squadSelectedNations.value.shift();
+                        squadSelectedNations.value.push(countryKey);
+                    }
+                }
+                updateUrlParams();
+            };
+
+            const availableSquadNationKeys = computed(() => {
+                if (squadSelectedNations.value.length > 0) {
+                    return squadSelectedNations.value;
+                }
+                return Object.keys(nationsMap);
+            });
+
+            const getPlayerAssignedNation = (nickname) => {
+                if (squadPlayerNations[nickname]) {
+                    if (squadSelectedNations.value.length === 0 || squadSelectedNations.value.includes(squadPlayerNations[nickname])) {
+                        return squadPlayerNations[nickname];
+                    }
+                }
+                const avail = availableSquadNationKeys.value;
+                return avail[0] || 'country_ussr';
+            };
+
+            const setPlayerNation = (nickname, countryKey) => {
+                squadPlayerNations[nickname] = countryKey;
+                updateUrlParams();
+            };
+
+            const isSlotCustomized = (nickname, country, slotKey) => {
+                return !!squadMemberCustomSlots[`${nickname}_${country}_${slotKey}`];
+            };
+
+            const overrideSquadMemberSlot = (nickname, country, slotKey, vehicleId) => {
+                squadMemberCustomSlots[`${nickname}_${country}_${slotKey}`] = vehicleId;
+            };
+
+            const resetSquadMemberSlot = (nickname, country, slotKey) => {
+                delete squadMemberCustomSlots[`${nickname}_${country}_${slotKey}`];
+            };
+
+            const openSwapModal = (nickname, country, slotKey, slotTitle, currentUnitId) => {
+                activeSwapModal.isOpen = true;
+                activeSwapModal.nickname = nickname;
+                activeSwapModal.country = country;
+                activeSwapModal.slotKey = slotKey;
+                activeSwapModal.slotTitle = slotTitle || 'Слот техники';
+                activeSwapModal.currentUnitId = currentUnitId;
+                activeSwapModal.filterType = 'all';
+                activeSwapModal.searchQuery = '';
+            };
+
+            const closeSwapModal = () => {
+                activeSwapModal.isOpen = false;
+            };
+
+            const selectModalSwapUnit = (unitId) => {
+                if (!activeSwapModal.nickname || !activeSwapModal.country || !activeSwapModal.slotKey) return;
+                overrideSquadMemberSlot(activeSwapModal.nickname, activeSwapModal.country, activeSwapModal.slotKey, unitId);
+                closeSwapModal();
+            };
+
+            const resetModalSwapUnit = () => {
+                if (!activeSwapModal.nickname || !activeSwapModal.country || !activeSwapModal.slotKey) return;
+                resetSquadMemberSlot(activeSwapModal.nickname, activeSwapModal.country, activeSwapModal.slotKey);
+                closeSwapModal();
+            };
+
+            const swapModalAlternatives = computed(() => {
+                if (!activeSwapModal.isOpen || !activeSwapModal.nickname || !activeSwapModal.country) return [];
+                const uid = 'cloud_' + activeSwapModal.nickname;
+                const profile = savedProfiles.value[uid];
+                if (!profile) return [];
+
+                const pV = profile.SpadeInfo ? (profile.SpadeInfo[activeSwapModal.country] || {}) : {};
+                const maxBr = squadTargetBr.value;
+                const minBr = squadMinBr.value;
+                const isAirRbMode = squadBattleType.value === 'air_rb';
+                const q = (activeSwapModal.searchQuery || '').trim().toLowerCase();
+                const fType = activeSwapModal.filterType;
+
+                const list = [];
+                for (const [vId, st] of Object.entries(pV)) {
+                    if (st === 0 && !filters.showHidden) continue;
+                    const m = globalDb.value[vId];
+                    if (!m) continue;
+
+                    const isGround = ['tank', 'heavy_tank', 'wheeled_vehicle'].includes(m.unitMoveType);
+                    const isAir = m.unitMoveType === 'air';
+
+                    if (isAirRbMode && !isAir) continue;
+
+                    const realBr = isAir 
+                        ? (isAirRbMode ? (m.battleRatingHistorical || 1.0) : (m.battleRatingTankHistorical || m.battleRatingHistorical || 1.0))
+                        : (m.battleRatingHistorical || 1.0);
+
+                    if (realBr < minBr || realBr > maxBr) continue;
+
+                    if (fType === 'tank') {
+                        if (!['exp_tank', 'exp_heavy_tank'].includes(m.unitClass) && !['tank', 'heavy_tank'].includes(m.unitMoveType)) continue;
+                    } else if (fType === 'spg') {
+                        if (m.unitClass !== 'exp_tank_destroyer') continue;
+                    } else if (fType === 'spaa') {
+                        if (m.unitClass !== 'exp_SPAA') continue;
+                    } else if (fType === 'fighter') {
+                        if (m.unitClass !== 'exp_fighter') continue;
+                    } else if (fType === 'assault') {
+                        if (!['exp_assault', 'exp_bomber'].includes(m.unitClass)) continue;
+                    }
+
+                    if (q) {
+                        const vName = (m.name || '').toLowerCase();
+                        const vIdLower = vId.toLowerCase();
+                        if (!vName.includes(q) && !vIdLower.includes(q)) continue;
+                    }
+
+                    list.push({
+                        id: vId,
+                        name: m.name || vId,
+                        br: realBr,
+                        status: st,
+                        rank: m.rank,
+                        typeInfo: getUnitTypeDetails(m),
+                        unitClass: m.unitClass,
+                        unitMoveType: m.unitMoveType
+                    });
+                }
+
+                return list.sort((a, b) => (b.status - a.status) || (b.br - a.br) || a.name.localeCompare(b.name));
+            });
+
+            // ========================================================
+            // ДЕТАЛЬНЫЙ СЕТАП БОЙЦА В НАЦИИ (ДЛЯ СБОРНОГО И ПО НАЦИЯМ)
+            // ========================================================
+            const getSquadMemberSetup = (nickname, country) => {
+                const uid = 'cloud_' + nickname;
+                const profile = savedProfiles.value[uid];
+                const countryName = nationsMap[country] || country;
+
+                if (!profile) {
+                    return {
+                        name: nickname,
+                        country,
+                        countryName,
+                        isReady: false,
+                        units: []
+                    };
+                }
+
+                const pV = profile.SpadeInfo ? (profile.SpadeInfo[country] || {}) : {};
+                const maxBr = squadTargetBr.value;
+                const minBr = squadMinBr.value;
+                const isAirRbMode = squadBattleType.value === 'air_rb';
+
+                const tanks = [], spaa = [], air = [];
+
+                for (const [vId, st] of Object.entries(pV)) {
+                    if (st === 0 && !filters.showHidden) continue;
+                    const m = globalDb.value[vId];
+                    if (!m) continue;
+
+                    const isGround = ['tank', 'heavy_tank', 'wheeled_vehicle'].includes(m.unitMoveType);
+                    const isAir = m.unitMoveType === 'air';
+
+                    if (isGround && !isAirRbMode) {
+                        const br = m.battleRatingHistorical || 1.0;
+                        if (br >= minBr && br <= maxBr) {
+                            const uObj = {
+                                id: vId,
+                                name: m.name || vId,
+                                br,
+                                status: st,
+                                rank: m.rank,
+                                unitClass: m.unitClass,
+                                unitMoveType: m.unitMoveType,
+                                typeInfo: getUnitTypeDetails(m)
+                            };
+                            if (m.unitClass === 'exp_SPAA') spaa.push(uObj);
+                            else tanks.push(uObj);
+                        }
+                    } else if (isAir) {
+                        const br = isAirRbMode 
+                            ? (m.battleRatingHistorical || 1.0) 
+                            : (m.battleRatingTankHistorical || m.battleRatingHistorical || 1.0);
+                        if (br >= minBr && br <= maxBr) {
+                            air.push({
+                                id: vId,
+                                name: m.name || vId,
+                                br,
+                                status: st,
+                                rank: m.rank,
+                                unitClass: m.unitClass,
+                                unitMoveType: m.unitMoveType,
+                                typeInfo: getUnitTypeDetails(m)
+                            });
+                        }
+                    }
+                }
+
+                const sorter = (a, b) => (b.status - a.status) || (b.br - a.br);
+                tanks.sort(sorter);
+                spaa.sort(sorter);
+                air.sort(sorter);
+
+                const units = [];
+
+                if (isAirRbMode) {
+                    // Air RB: 1 primary plane + up to 2 variations
+                    const primaryAir = air.find(a => a.unitClass === 'exp_fighter') || air[0];
+                    const assaultAir = air.find(a => a.id !== primaryAir?.id && ['exp_assault', 'exp_bomber'].includes(a.unitClass));
+                    const extraAir = air.find(a => a.id !== primaryAir?.id && a.id !== assaultAir?.id);
+
+                    if (primaryAir) {
+                        const customId = squadMemberCustomSlots[`${nickname}_${country}_air_main`];
+                        const meta = customId && globalDb.value[customId];
+                        units.push({
+                            slotKey: 'air_main',
+                            slotTitle: 'Основной самолёт (Истребитель)',
+                            id: customId || primaryAir.id,
+                            name: meta ? (meta.name || customId) : primaryAir.name,
+                            br: meta ? (meta.battleRatingHistorical || 1.0) : primaryAir.br,
+                            status: customId ? (pV[customId] || 1) : primaryAir.status,
+                            rank: meta ? meta.rank : primaryAir.rank,
+                            typeInfo: getUnitTypeDetails(meta || primaryAir)
+                        });
+                    }
+                    if (assaultAir) {
+                        const customId = squadMemberCustomSlots[`${nickname}_${country}_air_sec`];
+                        const meta = customId && globalDb.value[customId];
+                        units.push({
+                            slotKey: 'air_sec',
+                            slotTitle: 'Вариация (Штурмовик / Бомбер)',
+                            id: customId || assaultAir.id,
+                            name: meta ? (meta.name || customId) : assaultAir.name,
+                            br: meta ? (meta.battleRatingHistorical || 1.0) : assaultAir.br,
+                            status: customId ? (pV[customId] || 1) : assaultAir.status,
+                            rank: meta ? meta.rank : assaultAir.rank,
+                            typeInfo: getUnitTypeDetails(meta || assaultAir)
+                        });
+                    }
+                    if (extraAir && units.length < 3) {
+                        const customId = squadMemberCustomSlots[`${nickname}_${country}_air_extra`];
+                        const meta = customId && globalDb.value[customId];
+                        units.push({
+                            slotKey: 'air_extra',
+                            slotTitle: 'Альтернатива (Резерв)',
+                            id: customId || extraAir.id,
+                            name: meta ? (meta.name || customId) : extraAir.name,
+                            br: meta ? (meta.battleRatingHistorical || 1.0) : extraAir.br,
+                            status: customId ? (pV[customId] || 1) : extraAir.status,
+                            rank: meta ? meta.rank : extraAir.rank,
+                            typeInfo: getUnitTypeDetails(meta || extraAir)
+                        });
+                    }
+                } else {
+                    // Ground RB: Slot 1 (Tank #1), Slot 2 (Tank #2), Slot 3 (SPAA / Tank #3), Slot 4 (Air in TRB if focus is 'all' or 'air')
+                    if (tanks[0]) {
+                        const customId = squadMemberCustomSlots[`${nickname}_${country}_tank_1`];
+                        const meta = customId && globalDb.value[customId];
+                        units.push({
+                            slotKey: 'tank_1',
+                            slotTitle: 'Танк #1 (Основа)',
+                            id: customId || tanks[0].id,
+                            name: meta ? (meta.name || customId) : tanks[0].name,
+                            br: meta ? (meta.battleRatingHistorical || 1.0) : tanks[0].br,
+                            status: customId ? (pV[customId] || 1) : tanks[0].status,
+                            rank: meta ? meta.rank : tanks[0].rank,
+                            typeInfo: getUnitTypeDetails(meta || tanks[0])
+                        });
+                    }
+                    if (tanks[1]) {
+                        const customId = squadMemberCustomSlots[`${nickname}_${country}_tank_2`];
+                        const meta = customId && globalDb.value[customId];
+                        units.push({
+                            slotKey: 'tank_2',
+                            slotTitle: 'Танк #2 (Поддержка)',
+                            id: customId || tanks[1].id,
+                            name: meta ? (meta.name || customId) : tanks[1].name,
+                            br: meta ? (meta.battleRatingHistorical || 1.0) : tanks[1].br,
+                            status: customId ? (pV[customId] || 1) : tanks[1].status,
+                            rank: meta ? meta.rank : tanks[1].rank,
+                            typeInfo: getUnitTypeDetails(meta || tanks[1])
+                        });
+                    }
+                    const thirdUnit = spaa[0] || tanks[2];
+                    if (thirdUnit) {
+                        const customId = squadMemberCustomSlots[`${nickname}_${country}_spaa_or_tank`];
+                        const meta = customId && globalDb.value[customId];
+                        units.push({
+                            slotKey: 'spaa_or_tank',
+                            slotTitle: spaa[0] ? 'ПВО / ЗСУ' : 'Танк #3 (Резерв)',
+                            id: customId || thirdUnit.id,
+                            name: meta ? (meta.name || customId) : thirdUnit.name,
+                            br: meta ? (meta.battleRatingHistorical || 1.0) : thirdUnit.br,
+                            status: customId ? (pV[customId] || 1) : thirdUnit.status,
+                            rank: meta ? meta.rank : thirdUnit.rank,
+                            typeInfo: getUnitTypeDetails(meta || thirdUnit)
+                        });
+                    }
+                    if ((squadTeamFocus.value === 'all' || squadTeamFocus.value === 'air') && air[0]) {
+                        const customId = squadMemberCustomSlots[`${nickname}_${country}_trb_air`];
+                        const meta = customId && globalDb.value[customId];
+                        units.push({
+                            slotKey: 'trb_air',
+                            slotTitle: 'Авиация в ТРБ',
+                            id: customId || air[0].id,
+                            name: meta ? (meta.name || customId) : air[0].name,
+                            br: meta ? (meta.battleRatingTankHistorical || meta.battleRatingHistorical || 1.0) : air[0].br,
+                            status: customId ? (pV[customId] || 1) : air[0].status,
+                            rank: meta ? meta.rank : air[0].rank,
+                            typeInfo: getUnitTypeDetails(meta || air[0])
+                        });
+                    }
+                }
+
+                let isReady = false;
+                if (isAirRbMode) {
+                    isReady = units.length >= 1;
+                } else {
+                    if (squadTeamFocus.value === 'tanks') {
+                        isReady = units.filter(u => u.slotKey.startsWith('tank') || u.slotKey === 'spaa_or_tank').length >= 2;
+                    } else if (squadTeamFocus.value === 'air') {
+                        isReady = units.some(u => u.slotKey === 'trb_air');
+                    } else {
+                        isReady = units.filter(u => u.slotKey.startsWith('tank') || u.slotKey === 'spaa_or_tank').length >= 2;
+                    }
+                }
+
+                return {
+                    name: nickname,
+                    country,
+                    countryName,
+                    isReady,
+                    units
+                };
+            };
+
+            // ========================================================
             // АЛГОРИТМ СРАВНЕНИЯ ПО ОТРЯДУ (2-4 БОЙЦА)
             // ========================================================
             const teamComparisonResults = computed(() => {
@@ -2127,104 +2918,9 @@
                 if (!dbLoaded.value || members.length === 0) return [];
 
                 const results = [];
-                const maxBr = squadTargetBr.value;
-                const minBr = squadMinBr.value;
-                const isAirRbMode = squadBattleType.value === 'air_rb';
-
                 for (const [countryKey, countryName] of Object.entries(nationsMap)) {
-                    let readyCount = 0;
-                    const memberEvaluations = [];
-
-                    for (const nickname of members) {
-                        const uid = 'cloud_' + nickname;
-                        const profile = savedProfiles.value[uid];
-                        
-                        if (!profile) {
-                            memberEvaluations.push({
-                                name: nickname,
-                                isReady: false,
-                                groundSetup: [],
-                                bestTank: null,
-                                bestAir: null,
-                                airVariations: [],
-                                totalAirCount: 0,
-                                bestSpaa: null
-                            });
-                            continue;
-                        }
-
-                        const pV = profile.SpadeInfo ? (profile.SpadeInfo[countryKey] || {}) : {};
-                        const tanks = [], spaa = [], air = [];
-
-                        for (const [vId, st] of Object.entries(pV)) {
-                            if (st === 0) continue;
-                            const m = globalDb.value[vId];
-                            if (!m) continue;
-
-                            const isGround = ['tank', 'heavy_tank', 'wheeled_vehicle'].includes(m.unitMoveType);
-                            const isAir = m.unitMoveType === 'air';
-
-                            if (isGround && !isAirRbMode) {
-                                const br = m.battleRatingHistorical || 1.0;
-                                if (br >= minBr && br <= maxBr) {
-                                    if (m.unitClass === 'exp_SPAA') spaa.push({ id: vId, name: m.name, br, status: st, unitClass: m.unitClass });
-                                    else tanks.push({ id: vId, name: m.name, br, status: st, unitClass: m.unitClass });
-                                }
-                            } else if (isAir) {
-                                // Если Летка РБ — честный Авиа БР, если ТРБ — танковый БР авиации
-                                const br = isAirRbMode ? (m.battleRatingHistorical || 1.0) : (m.battleRatingTankHistorical || m.battleRatingHistorical || 1.0);
-                                if (br >= minBr && br <= maxBr) {
-                                    const unitClass = m.unitClass;
-                                    const roleTitle = unitClass === 'exp_assault' ? 'Штурмовик' : (unitClass === 'exp_bomber' ? 'Бомбардировщик' : 'Истребитель');
-                                    const roleShort = unitClass === 'exp_assault' ? 'Штурм' : (unitClass === 'exp_bomber' ? 'Бомбер' : 'Истр');
-                                    const icon = unitClass === 'exp_assault' ? '⚡' : (unitClass === 'exp_bomber' ? '💣' : '✈️');
-                                    air.push({ id: vId, name: m.name, br, status: st, unitClass, roleTitle, roleShort, icon });
-                                }
-                            }
-                        }
-
-                        const sorter = (a, b) => (b.status - a.status) || (b.br - a.br);
-                        tanks.sort(sorter);
-                        spaa.sort(sorter);
-                        air.sort(sorter);
-
-                        // Формирование сетапа из 3 наземных машин: 2 танка + ЗСУ (или 3 танка)
-                        const groundSetup = [];
-                        if (tanks[0]) groundSetup.push({ ...tanks[0], slotType: 'Т1', icon: '🛡️' });
-                        if (tanks[1]) groundSetup.push({ ...tanks[1], slotType: 'Т2', icon: '🛡️' });
-                        if (spaa[0]) {
-                            groundSetup.push({ ...spaa[0], slotType: 'ЗСУ', icon: '🎯' });
-                        } else if (tanks[2]) {
-                            groundSetup.push({ ...tanks[2], slotType: 'Т3', icon: '🛡️' });
-                        }
-
-                        let isReady = false;
-                        if (isAirRbMode) {
-                            // В Летке РБ достаточно ровно 1 самолета
-                            isReady = air.length >= 1;
-                        } else {
-                            if (squadTeamFocus.value === 'tanks') {
-                                isReady = groundSetup.length >= 2;
-                            } else if (squadTeamFocus.value === 'air') {
-                                isReady = air.length >= 1;
-                            } else {
-                                isReady = groundSetup.length >= 2;
-                            }
-                        }
-
-                        if (isReady) readyCount++;
-
-                        memberEvaluations.push({
-                            name: nickname,
-                            isReady,
-                            groundSetup,
-                            bestTank: tanks[0] || null,
-                            bestAir: air[0] || null,
-                            airVariations: air.slice(0, 3),
-                            totalAirCount: air.length,
-                            bestSpaa: spaa[0] || null
-                        });
-                    }
+                    const memberEvaluations = members.map(nickname => getSquadMemberSetup(nickname, countryKey));
+                    const readyCount = memberEvaluations.filter(m => m.isReady).length;
 
                     results.push({
                         country: countryKey,
@@ -2235,6 +2931,23 @@
                 }
 
                 return results.sort((a, b) => b.readyCount - a.readyCount);
+            });
+
+            const filteredTeamComparisonResults = computed(() => {
+                let list = teamComparisonResults.value;
+                if (squadSelectedNations.value.length > 0) {
+                    list = list.filter(item => squadSelectedNations.value.includes(item.country));
+                }
+                return list;
+            });
+
+            const combinedSquadData = computed(() => {
+                const members = activeSquadMembersList.value;
+                if (!dbLoaded.value || members.length === 0) return [];
+                return members.map(nick => {
+                    const cKey = getPlayerAssignedNation(nick);
+                    return getSquadMemberSetup(nick, cKey);
+                });
             });
 
             // ========================================================
@@ -2649,6 +3362,32 @@
                     squadNation.value = nationParam;
                 }
 
+                // Нации отряда (до 3)
+                const squadNationsParam = urlParams.get('squad_nations');
+                if (squadNationsParam) {
+                    const nList = squadNationsParam.split(',').filter(k => nationsMap[k]);
+                    if (nList.length > 0) squadSelectedNations.value = nList.slice(0, 3);
+                }
+
+                // Режим отображения отряда
+                const squadViewParam = urlParams.get('squad_view');
+                if (squadViewParam && ['combined', 'by_nations'].includes(squadViewParam)) {
+                    squadTeamViewMode.value = squadViewParam;
+                }
+
+                // Индивидуальные нации бойцов
+                const pNatParam = urlParams.get('p_nat');
+                if (pNatParam) {
+                    const pairs = pNatParam.split(',');
+                    pairs.forEach(pair => {
+                        const [rawNick, cKey] = pair.split(':');
+                        if (rawNick && cKey && nationsMap[cKey]) {
+                            const nick = decodeURIComponent(rawNick);
+                            squadPlayerNations[nick] = cKey;
+                        }
+                    });
+                }
+
                 const squadParam = urlParams.get('squad');
                 if (squadParam) {
                     const members = squadParam.split(',').map(s => s.trim()).filter(Boolean);
@@ -2868,7 +3607,11 @@
                 filters, dbLoaded, playerLoaded, brBrackets, nationsMap, nationsDecorated, currentTableData, dashboardStats, isFallbackActive, playerBasics, activePlayerUid, cloudPlayers, playerSearchQuery, showSuggestions, filteredCloudPlayers, isExtensionInstalled, brCounters, typeCounters, nationCounters, availableTourPresets, activePresetData,
                 activeMainTab, squadSubMode, squadBattleType, squadTargetBr, squadMinBr, squadNation, popularSquadBrs, squadAllNationsData, activeSquadData, overrideSlot,
                 soloAirAllNationsData, soloAirActiveNationData,
-                squadExtraMembers, squadSlotQueries, activeSquadSuggestIndex, getFilteredSquadMembers, selectSquadMember, activeSquadMembersList, squadTeamFocus, isMemberAlreadyInSquad, onSquadMemberSelected, removeSquadMemberSlot, teamComparisonResults,
+                squadExtraMembers, squadSlotQueries, activeSquadSuggestIndex, getFilteredSquadMembers, selectSquadMember, activeSquadMembersList, squadTeamFocus, isMemberAlreadyInSquad, onSquadMemberSelected, removeSquadMemberSlot, teamComparisonResults, filteredTeamComparisonResults, combinedSquadData,
+                squadSelectedNations, squadPlayerNations, squadTeamViewMode, squadMemberCustomSlots, activeSwapModal, romanRanks,
+                getUnitTypeDetails, toggleSquadNation, availableSquadNationKeys, getPlayerAssignedNation, setPlayerNation,
+                isSlotCustomized, overrideSquadMemberSlot, resetSquadMemberSlot,
+                openSwapModal, closeSwapModal, selectModalSwapUnit, resetModalSwapUnit, swapModalAlternatives, getSquadMemberSetup,
                 srbViewMode, srbBracketsAnalysis, selectedSrbBracket, selectedSrbRoster,
                 tourSearchQuery, filteredTournamentUnits, tournamentStats,
                 loadGlobalDbManual, toggleBr, resetBrs, resetNations, switchPlayer, selectPlayer,
