@@ -1981,6 +1981,21 @@
 
             // Режим Сквада: 'solo' (Соло) | 'team' (Отряд 2-4)
             // Выбор до 3 наций для отряда
+            // Опция: Только прокачка (не в пиках)
+            const squadGrindOnly = ref(false);
+            // Опция: Добор техники чуть ниже вилки БР
+            const squadAllowLowerBr = ref(true);
+            // Индивидуальные настройки прокачки по бойцам: { [nickname]: boolean }
+            const squadPlayerGrindSettings = reactive({});
+            const isPlayerGrindOnly = (nickname) => {
+                if (squadPlayerGrindSettings[nickname] !== undefined) return squadPlayerGrindSettings[nickname];
+                return squadGrindOnly.value;
+            };
+            const togglePlayerGrind = (nickname) => {
+                squadPlayerGrindSettings[nickname] = !isPlayerGrindOnly(nickname);
+                updateUrlParams();
+            };
+
             const squadSelectedNations = ref([]);
             // Индивидуальные нации для бойцов отряда: { [nickname]: countryKey }
             const squadPlayerNations = reactive({});
@@ -2345,7 +2360,6 @@
                     allTanks: [],
                     allSpaa: [],
                     allPlanes: [],
-                    pool: [],
                     slotsFilled: 0,
                     spadedCount: 0,
                     isComplete: false,
@@ -2358,11 +2372,13 @@
                 const pStats = stats[country] || {};
                 const maxBr = squadTargetBr.value;
                 const minBr = squadMinBr.value;
+                const allowLower = squadAllowLowerBr.value;
+                const lowerMinBr = allowLower ? Math.max(1.0, Math.round((maxBr - 2.0) * 10) / 10) : minBr;
+                const isGrind = squadGrindOnly.value;
 
-                const tanks = [];
-                const spaaList = [];
-                const underBrSpaa = [];
-                const planes = [];
+                const inBrTanks = [], lowerTanks = [];
+                const inBrSpaa = [], lowerSpaa = [];
+                const inBrPlanes = [], lowerPlanes = [];
 
                 for (const [vId, meta] of Object.entries(globalDb.value)) {
                     if (meta.country !== country) continue;
@@ -2375,47 +2391,72 @@
 
                     if (isGround) {
                         const br = meta.battleRatingHistorical || 1.0;
-                        const isSpaa = meta.unitClass === 'exp_SPAA';
+                        if (br <= maxBr && br >= lowerMinBr) {
+                            const isSpaa = meta.unitClass === 'exp_SPAA';
+                            const isLowerBr = br < minBr;
+                            const brDiff = Math.round((maxBr - br) * 10) / 10;
+                            const unitObj = {
+                                id: vId,
+                                name: meta.name,
+                                br: br,
+                                status: status,
+                                unitClass: meta.unitClass,
+                                isPrem: meta.isPrem || meta.isEvent || meta.isGift,
+                                isLowerBr,
+                                brDiff,
+                                roleTitle: isSpaa ? 'ЗСУ / ПВО' : (meta.unitClass === 'exp_heavy_tank' ? 'Тяжелый танк' : (meta.unitClass === 'exp_tank_destroyer' ? 'САУ' : 'Основной танк'))
+                            };
 
-                        const unitObj = {
-                            id: vId,
-                            name: meta.name,
-                            br: br,
-                            status: status,
-                            unitClass: meta.unitClass,
-                            isPrem: meta.isPrem || meta.isEvent || meta.isGift,
-                            roleTitle: isSpaa ? 'ЗСУ / ПВО' : (meta.unitClass === 'exp_heavy_tank' ? 'Тяжелый танк' : (meta.unitClass === 'exp_tank_destroyer' ? 'САУ' : 'Основной танк'))
-                        };
-
-                        if (br >= minBr && br <= maxBr) {
-                            if (isSpaa) spaaList.push(unitObj);
-                            else tanks.push(unitObj);
-                        } else if (isSpaa && br < minBr) {
-                            underBrSpaa.push({ ...unitObj, isUnderBr: true });
+                            if (isSpaa) {
+                                if (br >= minBr) inBrSpaa.push(unitObj);
+                                else lowerSpaa.push(unitObj);
+                            } else {
+                                if (br >= minBr) inBrTanks.push(unitObj);
+                                else lowerTanks.push(unitObj);
+                            }
                         }
                     } else if (isAir) {
-                        // Для Танковых РБ используется раздельный БР ТРБ
                         const tankBr = meta.battleRatingTankHistorical || meta.battleRatingHistorical || 1.0;
-                        if (tankBr >= minBr && tankBr <= maxBr) {
-                            planes.push({
+                        if (tankBr <= maxBr && tankBr >= lowerMinBr) {
+                            const isLowerBr = tankBr < minBr;
+                            const brDiff = Math.round((maxBr - tankBr) * 10) / 10;
+                            const unitObj = {
                                 id: vId,
                                 name: meta.name,
                                 br: tankBr,
                                 status: status,
                                 unitClass: meta.unitClass,
                                 isPrem: meta.isPrem || meta.isEvent || meta.isGift,
+                                isLowerBr,
+                                brDiff,
                                 isDifferentTankBr: !!meta.battleRatingTankHistorical && meta.battleRatingTankHistorical !== meta.battleRatingHistorical,
                                 roleTitle: meta.unitClass === 'exp_assault' ? 'Штурмовик' : (meta.unitClass === 'exp_bomber' ? 'Бомбардировщик' : 'Истребитель')
-                            });
+                            };
+                            if (tankBr >= minBr) inBrPlanes.push(unitObj);
+                            else lowerPlanes.push(unitObj);
                         }
                     }
                 }
 
-                const sorter = (a, b) => (b.status - a.status) || (b.br - a.br);
-                tanks.sort(sorter);
-                spaaList.sort(sorter);
-                underBrSpaa.sort(sorter);
-                planes.sort(sorter);
+                const sorter = (a, b) => {
+                    if (isGrind) {
+                        const aGrind = a.status === 1 ? 1 : 0;
+                        const bGrind = b.status === 1 ? 1 : 0;
+                        if (bGrind !== aGrind) return bGrind - aGrind;
+                    }
+                    return (b.status - a.status) || (b.br - a.br);
+                };
+
+                inBrTanks.sort(sorter);
+                lowerTanks.sort(sorter);
+                inBrSpaa.sort(sorter);
+                lowerSpaa.sort(sorter);
+                inBrPlanes.sort(sorter);
+                lowerPlanes.sort(sorter);
+
+                const tanks = inBrTanks.concat(lowerTanks);
+                const spaaList = inBrSpaa.concat(lowerSpaa);
+                const planes = inBrPlanes.concat(lowerPlanes);
 
                 result.allTanks = tanks;
                 result.allSpaa = spaaList;
@@ -2425,13 +2466,13 @@
 
                 result.tank1 = userOverrides.tank1 && tanks.some(t => t.id === userOverrides.tank1) ? tanks.find(t => t.id === userOverrides.tank1) : (tanks[0] || null);
                 result.tank2 = userOverrides.tank2 && tanks.some(t => t.id === userOverrides.tank2 && t.id !== result.tank1?.id) ? tanks.find(t => t.id === userOverrides.tank2) : (tanks.find(t => t.id !== result.tank1?.id) || null);
-                result.spaa = userOverrides.spaa && (spaaList.concat(underBrSpaa)).some(s => s.id === userOverrides.spaa) ? (spaaList.concat(underBrSpaa)).find(s => s.id === userOverrides.spaa) : (spaaList[0] || underBrSpaa[0] || null);
+                result.spaa = userOverrides.spaa && spaaList.some(s => s.id === userOverrides.spaa) ? spaaList.find(s => s.id === userOverrides.spaa) : (spaaList[0] || null);
                 result.plane = userOverrides.plane && planes.some(p => p.id === userOverrides.plane) ? planes.find(p => p.id === userOverrides.plane) : (planes[0] || null);
 
                 const activeIds = [result.tank1?.id, result.tank2?.id].filter(Boolean);
                 result.tank1Alternatives = tanks.filter(t => !activeIds.includes(t.id));
                 result.tank2Alternatives = tanks.filter(t => !activeIds.includes(t.id));
-                result.spaaAlternatives = spaaList.concat(underBrSpaa).filter(s => s.id !== result.spaa?.id);
+                result.spaaAlternatives = spaaList.filter(s => s.id !== result.spaa?.id);
                 result.planeAlternatives = planes.filter(p => !result.plane || p.id !== result.plane.id);
 
                 const slots = [result.tank1, result.tank2, result.spaa, result.plane];
@@ -2460,7 +2501,11 @@
 
                 const maxBr = squadTargetBr.value;
                 const minBr = squadMinBr.value;
-                const planes = [];
+                const allowLower = squadAllowLowerBr.value;
+                const lowerMinBr = allowLower ? Math.max(1.0, Math.round((maxBr - 2.0) * 10) / 10) : minBr;
+                const isGrind = squadGrindOnly.value;
+
+                const inBrPlanes = [], lowerPlanes = [];
 
                 for (const [vId, meta] of Object.entries(globalDb.value)) {
                     if (meta.country !== country || meta.unitMoveType !== 'air') continue;
@@ -2468,29 +2513,43 @@
                     const status = stats[vId] || 0;
                     if (status === 0 && !filters.showHidden) continue;
 
-                    // Для Авиа РБ используется честный Авиационный БР
                     const airBr = meta.battleRatingHistorical || 1.0;
-                    if (airBr >= minBr && airBr <= maxBr) {
-                        planes.push({
+                    if (airBr <= maxBr && airBr >= lowerMinBr) {
+                        const isLowerBr = airBr < minBr;
+                        const brDiff = Math.round((maxBr - airBr) * 10) / 10;
+                        const pObj = {
                             id: vId,
                             name: meta.name,
                             br: airBr,
                             status: status,
                             unitClass: meta.unitClass,
                             isPrem: meta.isPrem || meta.isEvent || meta.isGift,
+                            isLowerBr,
+                            brDiff,
                             roleTitle: meta.unitClass === 'exp_assault' ? 'Штурмовик' : (meta.unitClass === 'exp_bomber' ? 'Бомбардировщик' : 'Истребитель')
-                        });
+                        };
+                        if (airBr >= minBr) inBrPlanes.push(pObj);
+                        else lowerPlanes.push(pObj);
                     }
                 }
 
-                // Сортировка для воздушного боя: статус ♠ в топе, затем высший БР, приоритет истребителям
-                planes.sort((a, b) => {
+                const sorter = (a, b) => {
+                    if (isGrind) {
+                        const aGrind = a.status === 1 ? 1 : 0;
+                        const bGrind = b.status === 1 ? 1 : 0;
+                        if (bGrind !== aGrind) return bGrind - aGrind;
+                    }
                     if (b.status !== a.status) return b.status - a.status;
                     if (b.br !== a.br) return b.br - a.br;
                     const aFighter = a.unitClass === 'exp_fighter' ? 1 : 0;
                     const bFighter = b.unitClass === 'exp_fighter' ? 1 : 0;
                     return bFighter - aFighter;
-                });
+                };
+
+                inBrPlanes.sort(sorter);
+                lowerPlanes.sort(sorter);
+
+                const planes = inBrPlanes.concat(lowerPlanes);
 
                 result.allPlanes = planes;
                 result.optionsCount = planes.filter(p => p.status > 0).length;
@@ -2650,7 +2709,11 @@
                 const pV = profile.SpadeInfo ? (profile.SpadeInfo[activeSwapModal.country] || {}) : {};
                 const maxBr = squadTargetBr.value;
                 const minBr = squadMinBr.value;
+                const allowLower = squadAllowLowerBr.value;
+                // Разрешаем добор техники чуть ниже вилки (до -2.3 БР)
+                const lowerMinBr = allowLower ? Math.max(1.0, Math.round((maxBr - 2.3) * 10) / 10) : minBr;
                 const isAirRbMode = squadBattleType.value === 'air_rb';
+                const isGrind = isPlayerGrindOnly(activeSwapModal.nickname);
                 const q = (activeSwapModal.searchQuery || '').trim().toLowerCase();
                 const fType = activeSwapModal.filterType;
 
@@ -2669,8 +2732,9 @@
                         ? (isAirRbMode ? (m.battleRatingHistorical || 1.0) : (m.battleRatingTankHistorical || m.battleRatingHistorical || 1.0))
                         : (m.battleRatingHistorical || 1.0);
 
-                    if (realBr < minBr || realBr > maxBr) continue;
+                    if (realBr < lowerMinBr || realBr > maxBr) continue;
 
+                    // Фильтрация по типам
                     if (fType === 'tank') {
                         if (!['exp_tank', 'exp_heavy_tank'].includes(m.unitClass) && !['tank', 'heavy_tank'].includes(m.unitMoveType)) continue;
                     } else if (fType === 'spg') {
@@ -2681,6 +2745,12 @@
                         if (m.unitClass !== 'exp_fighter') continue;
                     } else if (fType === 'assault') {
                         if (!['exp_assault', 'exp_bomber'].includes(m.unitClass)) continue;
+                    } else if (fType === 'grind') {
+                        // Только в прокачке (не в пиках)
+                        if (st !== 1) continue;
+                    } else if (fType === 'lower_br') {
+                        // Только ниже основной вилки
+                        if (realBr >= minBr) continue;
                     }
 
                     if (q) {
@@ -2688,6 +2758,9 @@
                         const vIdLower = vId.toLowerCase();
                         if (!vName.includes(q) && !vIdLower.includes(q)) continue;
                     }
+
+                    const isLowerBr = realBr < minBr;
+                    const brDiff = Math.round((maxBr - realBr) * 10) / 10;
 
                     list.push({
                         id: vId,
@@ -2697,11 +2770,21 @@
                         rank: m.rank,
                         typeInfo: getUnitTypeDetails(m),
                         unitClass: m.unitClass,
-                        unitMoveType: m.unitMoveType
+                        unitMoveType: m.unitMoveType,
+                        isLowerBr,
+                        brDiff
                     });
                 }
 
-                return list.sort((a, b) => (b.status - a.status) || (b.br - a.br) || a.name.localeCompare(b.name));
+                // Сортировка: если активен режим прокачки — техника в прокачке (st === 1) идет первой!
+                return list.sort((a, b) => {
+                    if (isGrind) {
+                        const aGrind = a.status === 1 ? 1 : 0;
+                        const bGrind = b.status === 1 ? 1 : 0;
+                        if (bGrind !== aGrind) return bGrind - aGrind;
+                    }
+                    return (b.status - a.status) || (b.br - a.br) || a.name.localeCompare(b.name);
+                });
             });
 
             // ========================================================
@@ -2726,8 +2809,13 @@
                 const maxBr = squadTargetBr.value;
                 const minBr = squadMinBr.value;
                 const isAirRbMode = squadBattleType.value === 'air_rb';
+                const isGrind = isPlayerGrindOnly(nickname);
+                const allowLower = squadAllowLowerBr.value;
+                const lowerMinBr = allowLower ? Math.max(1.0, Math.round((maxBr - 2.0) * 10) / 10) : minBr;
 
-                const tanks = [], spaa = [], air = [];
+                const inBrTanks = [], lowerTanks = [];
+                const inBrSpaa = [], lowerSpaa = [];
+                const inBrAir = [], lowerAir = [];
 
                 for (const [vId, st] of Object.entries(pV)) {
                     if (st === 0 && !filters.showHidden) continue;
@@ -2739,7 +2827,9 @@
 
                     if (isGround && !isAirRbMode) {
                         const br = m.battleRatingHistorical || 1.0;
-                        if (br >= minBr && br <= maxBr) {
+                        if (br <= maxBr && br >= lowerMinBr) {
+                            const isLowerBr = br < minBr;
+                            const brDiff = Math.round((maxBr - br) * 10) / 10;
                             const uObj = {
                                 id: vId,
                                 name: m.name || vId,
@@ -2748,17 +2838,26 @@
                                 rank: m.rank,
                                 unitClass: m.unitClass,
                                 unitMoveType: m.unitMoveType,
-                                typeInfo: getUnitTypeDetails(m)
+                                typeInfo: getUnitTypeDetails(m),
+                                isLowerBr,
+                                brDiff
                             };
-                            if (m.unitClass === 'exp_SPAA') spaa.push(uObj);
-                            else tanks.push(uObj);
+                            if (m.unitClass === 'exp_SPAA') {
+                                if (br >= minBr) inBrSpaa.push(uObj);
+                                else lowerSpaa.push(uObj);
+                            } else {
+                                if (br >= minBr) inBrTanks.push(uObj);
+                                else lowerTanks.push(uObj);
+                            }
                         }
                     } else if (isAir) {
                         const br = isAirRbMode 
                             ? (m.battleRatingHistorical || 1.0) 
                             : (m.battleRatingTankHistorical || m.battleRatingHistorical || 1.0);
-                        if (br >= minBr && br <= maxBr) {
-                            air.push({
+                        if (br <= maxBr && br >= lowerMinBr) {
+                            const isLowerBr = br < minBr;
+                            const brDiff = Math.round((maxBr - br) * 10) / 10;
+                            const uObj = {
                                 id: vId,
                                 name: m.name || vId,
                                 br,
@@ -2766,16 +2865,37 @@
                                 rank: m.rank,
                                 unitClass: m.unitClass,
                                 unitMoveType: m.unitMoveType,
-                                typeInfo: getUnitTypeDetails(m)
-                            });
+                                typeInfo: getUnitTypeDetails(m),
+                                isLowerBr,
+                                brDiff
+                            };
+                            if (br >= minBr) inBrAir.push(uObj);
+                            else lowerAir.push(uObj);
                         }
                     }
                 }
 
-                const sorter = (a, b) => (b.status - a.status) || (b.br - a.br);
-                tanks.sort(sorter);
-                spaa.sort(sorter);
-                air.sort(sorter);
+                // Сортировка: в режиме прокачки техника в прокачке (st === 1) идет первой!
+                const sorter = (a, b) => {
+                    if (isGrind) {
+                        const aGrind = a.status === 1 ? 1 : 0;
+                        const bGrind = b.status === 1 ? 1 : 0;
+                        if (bGrind !== aGrind) return bGrind - aGrind;
+                    }
+                    return (b.status - a.status) || (b.br - a.br);
+                };
+
+                inBrTanks.sort(sorter);
+                lowerTanks.sort(sorter);
+                inBrSpaa.sort(sorter);
+                lowerSpaa.sort(sorter);
+                inBrAir.sort(sorter);
+                lowerAir.sort(sorter);
+
+                // Сначала техника в вилке, затем добор техникой чуть ниже вилки
+                const tanks = inBrTanks.concat(lowerTanks);
+                const spaa = inBrSpaa.concat(lowerSpaa);
+                const air = inBrAir.concat(lowerAir);
 
                 const units = [];
 
@@ -2788,43 +2908,55 @@
                     if (primaryAir) {
                         const customId = squadMemberCustomSlots[`${nickname}_${country}_air_main`];
                         const meta = customId && globalDb.value[customId];
+                        const uMeta = meta || primaryAir;
+                        const realBr = meta ? (meta.battleRatingHistorical || 1.0) : primaryAir.br;
                         units.push({
                             slotKey: 'air_main',
                             slotTitle: 'Основной самолёт (Истребитель)',
                             id: customId || primaryAir.id,
                             name: meta ? (meta.name || customId) : primaryAir.name,
-                            br: meta ? (meta.battleRatingHistorical || 1.0) : primaryAir.br,
+                            br: realBr,
                             status: customId ? (pV[customId] || 1) : primaryAir.status,
                             rank: meta ? meta.rank : primaryAir.rank,
-                            typeInfo: getUnitTypeDetails(meta || primaryAir)
+                            typeInfo: getUnitTypeDetails(uMeta),
+                            isLowerBr: realBr < minBr,
+                            brDiff: Math.round((maxBr - realBr) * 10) / 10
                         });
                     }
                     if (assaultAir) {
                         const customId = squadMemberCustomSlots[`${nickname}_${country}_air_sec`];
                         const meta = customId && globalDb.value[customId];
+                        const uMeta = meta || assaultAir;
+                        const realBr = meta ? (meta.battleRatingHistorical || 1.0) : assaultAir.br;
                         units.push({
                             slotKey: 'air_sec',
                             slotTitle: 'Вариация (Штурмовик / Бомбер)',
                             id: customId || assaultAir.id,
                             name: meta ? (meta.name || customId) : assaultAir.name,
-                            br: meta ? (meta.battleRatingHistorical || 1.0) : assaultAir.br,
+                            br: realBr,
                             status: customId ? (pV[customId] || 1) : assaultAir.status,
                             rank: meta ? meta.rank : assaultAir.rank,
-                            typeInfo: getUnitTypeDetails(meta || assaultAir)
+                            typeInfo: getUnitTypeDetails(uMeta),
+                            isLowerBr: realBr < minBr,
+                            brDiff: Math.round((maxBr - realBr) * 10) / 10
                         });
                     }
                     if (extraAir && units.length < 3) {
                         const customId = squadMemberCustomSlots[`${nickname}_${country}_air_extra`];
                         const meta = customId && globalDb.value[customId];
+                        const uMeta = meta || extraAir;
+                        const realBr = meta ? (meta.battleRatingHistorical || 1.0) : extraAir.br;
                         units.push({
                             slotKey: 'air_extra',
                             slotTitle: 'Альтернатива (Резерв)',
                             id: customId || extraAir.id,
                             name: meta ? (meta.name || customId) : extraAir.name,
-                            br: meta ? (meta.battleRatingHistorical || 1.0) : extraAir.br,
+                            br: realBr,
                             status: customId ? (pV[customId] || 1) : extraAir.status,
                             rank: meta ? meta.rank : extraAir.rank,
-                            typeInfo: getUnitTypeDetails(meta || extraAir)
+                            typeInfo: getUnitTypeDetails(uMeta),
+                            isLowerBr: realBr < minBr,
+                            brDiff: Math.round((maxBr - realBr) * 10) / 10
                         });
                     }
                 } else {
@@ -2832,58 +2964,74 @@
                     if (tanks[0]) {
                         const customId = squadMemberCustomSlots[`${nickname}_${country}_tank_1`];
                         const meta = customId && globalDb.value[customId];
+                        const uMeta = meta || tanks[0];
+                        const realBr = meta ? (meta.battleRatingHistorical || 1.0) : tanks[0].br;
                         units.push({
                             slotKey: 'tank_1',
                             slotTitle: 'Танк #1 (Основа)',
                             id: customId || tanks[0].id,
                             name: meta ? (meta.name || customId) : tanks[0].name,
-                            br: meta ? (meta.battleRatingHistorical || 1.0) : tanks[0].br,
+                            br: realBr,
                             status: customId ? (pV[customId] || 1) : tanks[0].status,
                             rank: meta ? meta.rank : tanks[0].rank,
-                            typeInfo: getUnitTypeDetails(meta || tanks[0])
+                            typeInfo: getUnitTypeDetails(uMeta),
+                            isLowerBr: realBr < minBr,
+                            brDiff: Math.round((maxBr - realBr) * 10) / 10
                         });
                     }
                     if (tanks[1]) {
                         const customId = squadMemberCustomSlots[`${nickname}_${country}_tank_2`];
                         const meta = customId && globalDb.value[customId];
+                        const uMeta = meta || tanks[1];
+                        const realBr = meta ? (meta.battleRatingHistorical || 1.0) : tanks[1].br;
                         units.push({
                             slotKey: 'tank_2',
                             slotTitle: 'Танк #2 (Поддержка)',
                             id: customId || tanks[1].id,
                             name: meta ? (meta.name || customId) : tanks[1].name,
-                            br: meta ? (meta.battleRatingHistorical || 1.0) : tanks[1].br,
+                            br: realBr,
                             status: customId ? (pV[customId] || 1) : tanks[1].status,
                             rank: meta ? meta.rank : tanks[1].rank,
-                            typeInfo: getUnitTypeDetails(meta || tanks[1])
+                            typeInfo: getUnitTypeDetails(uMeta),
+                            isLowerBr: realBr < minBr,
+                            brDiff: Math.round((maxBr - realBr) * 10) / 10
                         });
                     }
                     const thirdUnit = spaa[0] || tanks[2];
                     if (thirdUnit) {
                         const customId = squadMemberCustomSlots[`${nickname}_${country}_spaa_or_tank`];
                         const meta = customId && globalDb.value[customId];
+                        const uMeta = meta || thirdUnit;
+                        const realBr = meta ? (meta.battleRatingHistorical || 1.0) : thirdUnit.br;
                         units.push({
                             slotKey: 'spaa_or_tank',
                             slotTitle: spaa[0] ? 'ПВО / ЗСУ' : 'Танк #3 (Резерв)',
                             id: customId || thirdUnit.id,
                             name: meta ? (meta.name || customId) : thirdUnit.name,
-                            br: meta ? (meta.battleRatingHistorical || 1.0) : thirdUnit.br,
+                            br: realBr,
                             status: customId ? (pV[customId] || 1) : thirdUnit.status,
                             rank: meta ? meta.rank : thirdUnit.rank,
-                            typeInfo: getUnitTypeDetails(meta || thirdUnit)
+                            typeInfo: getUnitTypeDetails(uMeta),
+                            isLowerBr: realBr < minBr,
+                            brDiff: Math.round((maxBr - realBr) * 10) / 10
                         });
                     }
                     if ((squadTeamFocus.value === 'all' || squadTeamFocus.value === 'air') && air[0]) {
                         const customId = squadMemberCustomSlots[`${nickname}_${country}_trb_air`];
                         const meta = customId && globalDb.value[customId];
+                        const uMeta = meta || air[0];
+                        const realBr = meta ? (meta.battleRatingTankHistorical || meta.battleRatingHistorical || 1.0) : air[0].br;
                         units.push({
                             slotKey: 'trb_air',
                             slotTitle: 'Авиация в ТРБ',
                             id: customId || air[0].id,
                             name: meta ? (meta.name || customId) : air[0].name,
-                            br: meta ? (meta.battleRatingTankHistorical || meta.battleRatingHistorical || 1.0) : air[0].br,
+                            br: realBr,
                             status: customId ? (pV[customId] || 1) : air[0].status,
                             rank: meta ? meta.rank : air[0].rank,
-                            typeInfo: getUnitTypeDetails(meta || air[0])
+                            typeInfo: getUnitTypeDetails(uMeta),
+                            isLowerBr: realBr < minBr,
+                            brDiff: Math.round((maxBr - realBr) * 10) / 10
                         });
                     }
                 }
@@ -3609,6 +3757,7 @@
                 soloAirAllNationsData, soloAirActiveNationData,
                 squadExtraMembers, squadSlotQueries, activeSquadSuggestIndex, getFilteredSquadMembers, selectSquadMember, activeSquadMembersList, squadTeamFocus, isMemberAlreadyInSquad, onSquadMemberSelected, removeSquadMemberSlot, teamComparisonResults, filteredTeamComparisonResults, combinedSquadData,
                 squadSelectedNations, squadPlayerNations, squadTeamViewMode, squadMemberCustomSlots, activeSwapModal, romanRanks,
+                squadGrindOnly, squadAllowLowerBr, squadPlayerGrindSettings, isPlayerGrindOnly, togglePlayerGrind,
                 getUnitTypeDetails, toggleSquadNation, availableSquadNationKeys, getPlayerAssignedNation, setPlayerNation,
                 isSlotCustomized, overrideSquadMemberSlot, resetSquadMemberSlot,
                 openSwapModal, closeSwapModal, selectModalSwapUnit, resetModalSwapUnit, swapModalAlternatives, getSquadMemberSetup,
